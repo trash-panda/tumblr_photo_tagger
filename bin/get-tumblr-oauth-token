@@ -1,0 +1,93 @@
+#!/usr/bin/env ruby
+#
+# Copyright (c) 2009 jugyo
+# Additional portions Copyright (c) 2018 trash-panda
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# coding: utf-8
+
+require 'oauth'
+require 'oauth/consumer'
+require "bundler/setup"
+require 'tumblr_scarper/api_token_hash'
+
+class String
+  def color num
+    "\e[#{num}m#{self}\e[0m"
+  end
+
+  def ask
+    print "#{self}"
+    gets.strip
+  end
+end
+
+def api_token_hash
+  @api_token_hash ||= TumblrScarper::ApiTokenHash.new
+  @api_token_hash.api_token_hash
+end
+
+def save_api_stuff_to_yaml(hash)
+  @api_token_hash ||= TumblrScarper::ApiTokenHash.new
+  @api_token_hash.save_api_stuff_to_yaml(hash)
+end
+
+def get_tumblr_oauth_token
+  consumer_key    = api_token_hash[:consumer_key] || 'Consumer Key: '.color(36).ask
+  consumer_secret = api_token_hash[:consumer_secret] || 'Consumer Secret: '.color(36).ask
+  consumer = OAuth::Consumer.new(
+    consumer_key,
+    consumer_secret,
+    :site => ENV['TUMBLR_API_URL'] || 'https://www.tumblr.com'
+  )
+
+  request_token = consumer.get_request_token(oauth_callback: 'http://tumblr.com/')
+
+  system('open', request_token.authorize_url) || puts("Access here: #{request_token.authorize_url}\nand...")
+  pin = 'OAuth Verifier: '.color(32).ask
+
+  access_token = request_token.get_access_token(
+    :oauth_token => request_token.token,
+    :oauth_verifier => pin
+  )
+
+  access_token_  = access_token.token
+  access_secret_ = access_token.secret
+  puts 'Token: '.color(35) + access_token_
+  puts 'Secret: '.color(35) + access_secret_
+
+  save_api_stuff_to_yaml({
+    :consumer_key => consumer_key,
+    :consumer_secret => consumer_secret,
+    :access_token => access_token_,
+    :access_secret => access_secret_,
+  })
+end
+
+begin
+  if api_token_hash[:access_token] && api_token_hash[:access_secret]
+    puts "INFO: Tumblr API access token and secret already found; skipping request"
+  else
+    get_tumblr_oauth_token
+  end
+rescue
+  puts "Error: #{$!}".color(31)
+end
