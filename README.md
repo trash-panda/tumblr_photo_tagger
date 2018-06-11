@@ -1,9 +1,28 @@
 # TumblrScarper
 
-1. Scrape images from a Tumblr blog
-2. Tag the images with XMP tags based on the post metadata
-  * uses [ExiftTool][1]
-  * post metadata = tags
+Scarp, download, and intelligently tag images from Tumblr blogs
+
+<!-- vim-markdown-toc GFM -->
+* [Description](#description)
+* [Installation](#installation)
+* [Usage](#usage)
+* [Reference](#reference)
+  * [Sequence](#sequence)
+  * [Details](#details)
+* [Development](#development)
+* [Contributing](#contributing)
+* [Code of Conduct](#code-of-conduct)
+
+<!-- vim-markdown-toc -->
+
+
+## Description
+
+Tumblr scarping takes place in three stages:
+
+![Scarping as a 3-Step Process](assets/tumblr_scarper.png)
+
+The artifacts from each stage is cached, so every stage can be interrupted/resumed without needing to re-run the previous stage.
 
 [1]: https://www.sno.phy.queensu.ca/~phil/exiftool/
 
@@ -26,6 +45,31 @@ Or install it yourself as:
 ## Usage
 
 TODO: Write usage instructions here
+
+## Reference
+
+### Sequence
+
+![Scarping sequence](assets/tumblr_scarper_sequence.png)
+
+### Details
+
+1. **Scarp** post data from Tumblr API + cache to `*.json` files on disk
+  - Paginates API data into paginated json files
+  - Idempotent: cached API data is not queried on subsequent runs
+2. **Normalize** post metadata for each image, cache results to `*.yaml` files on disk
+  - uses `*.json` files cached from API scrape during stage 1
+  For each image:
+    1. Determine best image URL to download
+    2. Normalize tags into XMP-ready taxonomy
+3. **Download + Tag** image files
+  - Uses `*.yaml` file(s) created/cached during stage 2
+  - For each image:
+    1. Download image file
+    2. Tag image file with XMP tags based on the post metadata
+      * uses [ExiftTool][1]
+      * post metadata = tags
+
 
 ## Development
 
