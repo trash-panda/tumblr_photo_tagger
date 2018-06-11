@@ -32,15 +32,15 @@ def download(url, max_size: nil)
       raise Error, "file is too big (max is #{max_size})"
     end
   }
-  
+
   downloaded_file = url.open(options)
 
   if downloaded_file.is_a?(StringIO)
     tempfile = Tempfile.new("open-uri", binmode: true)
     IO.copy_stream(downloaded_file, tempfile.path)
-   
+
     downloaded_file = tempfile
-  
+
   end
 
   downloaded_file
@@ -77,10 +77,10 @@ TAG_SUBS = {
 }
 
 DELETE_TAGS = [
-  'Abigail', 'Adams', 'Dolley', 'Madison', 'Jensen', 'Lefevre', 'bois de boulogne', 'caroline', 'on a clear day you can see forever', 'mrs james frasier', 'merry-joseph blondel' , 
-  'simon', 'raeburn', "Christie's", 'doucet', 
+  'Abigail', 'Adams', 'Dolley', 'Madison', 'Jensen', 'Lefevre', 'bois de boulogne', 'caroline', 'on a clear day you can see forever', 'mrs james frasier', 'merry-joseph blondel' ,
+  'simon', 'raeburn', "Christie's", 'doucet',
 ].map(&:downcase)
-  
+
 def all_tags(photos)
   t = photos.values.map{|x| x[:tags]}.flatten.sort
   tu = t.uniq
@@ -115,17 +115,16 @@ end
 
 def common_post_ops(post)
   url = ''
-  entry = {}
-  photos = {}
+  photos = { :skipped_files => {} }
   photo_src_field = 'photo-url-1280'
-  
+
   unless post.fetch('photos',[]).empty?
     # multiple photos in a post
     post['photos'].each do |photo|
       url    = photo[photo_src_field]
-      offset = photo['offset'].to_s           
+      offset = photo['offset'].to_s
       photos[url]           = photo_data(photo,post,photo_src_field)
-      photos[url][:slug]    = post['slug'] + "--#{offset}"        
+      photos[url][:slug]    = post['slug'] + "--#{offset}"
       photos[url][:caption] = photo['caption'] unless  photo['caption'].empty?
     end
   else
@@ -133,13 +132,13 @@ def common_post_ops(post)
     if( post[photo_src_field] =~ /^http/ )
       photos[url] = photo_data(photo,post,photo_src_field)
     elsif post['type'] == 'regular'
-      skipped_files[:regular] ||= []
-      skipped_files[:regular] << file
+      photos[:skipped_files][:regular] ||= []
+      photos[:skipped_files][:regular] << file
       puts "------- skipping text-only post from #{file}"
       next
     elsif post['type'] == 'answer'
-      skipped_files[:answer] ||= []
-      skipped_files[:answer] << file
+      photos[:skipped_files][:answer] ||= []
+      photos[:skipped_files][:answer] << file
       puts "------- skipping answer post from #{file}"
       next
     else
@@ -147,6 +146,7 @@ def common_post_ops(post)
       binding.pry
     end
   end
+  photos
 end
 
 # process tumblrthree-downloaded json files
@@ -154,12 +154,16 @@ def process_json_files
   skipped_files = {}
   photos = {}
   files_count = 0
-  
+
   # TODO: add a more general hook here
   Dir['*.json'].each do |file|
     files_count += 1
     post = JSON.parse File.read(file, :encoding => 'UTF-8')
-    entry = common_data_ops(post)
+    photos = photos.merge( common_post_ops(post) )
+    photos[:skipped_files].each do |k,v|
+      skipped_files[k] ||= []
+      skipped_files[k] += v
+    end
     puts "#### files_count: #{files_count}"
     puts "#### photos.size: '#{photos.size}'"
     if ((files_count % 50) == 0)
@@ -170,11 +174,11 @@ def process_json_files
   puts "== end of files"
   puts photos.to_yaml
   File.open( 'url-tags-downloads.yaml', 'w' ){|f| f.puts photos.to_yaml }
-  
+
   skipped_files.each do |post_type,files|
     File.open( "_skipped__#{post_type}", 'w' ){|f| f.puts files.to_yaml }
   end
-end 
+end
 
 require 'multi_exiftool'
 require 'fileutils'
@@ -204,7 +208,7 @@ def post_html_caption_to_markdown(post)
     parent = _p.parent
     text = _p.inner_text.split("\n").map{|x| "> #{x}" }.join("\n")
     _p.replace "#{text}\n"
-  end  
+  end
 
   caption  = "#{html.to_str}\n#{a_links.each_with_index.map{|x,i| "[#{i}]: #{x}" }.join("\n")}".gsub("\n",'&#xd;&#xa;')
 end
@@ -216,24 +220,24 @@ photos.each do |url,post|
   puts "\n## #{url}"
   puts post.to_yaml
   puts '','----',''
-  
-  
+
+
   file = "#{post[:slug]}#{File.extname(url)}"
   file_path = File.join( download_dir, file )
   unless File.exists? file_path
     downloaded_file = download url
     cp downloaded_file, file_path
   end
-  
+
   post_datetime = DateTime.parse(post[:date_gmt])
-  
+
   caption  = post_html_caption_to_markdown(post)
-  
-  writer = MultiExiftool::Writer.new 
+
+  writer = MultiExiftool::Writer.new
   writer.filenames = file_path
   writer.options = { 'P' => true, 'E' => true }
   writer.overwrite_original = true
-  
+
   writer.values = {
   'exif:imagedescription' => caption,
   'xmp:description'       => caption,
@@ -251,5 +255,5 @@ photos.each do |url,post|
   unless result || writer.errors.first =~ /\d image files updated$/
     warn "WARNING: Tagging failed: '#{writer.errors}'"
   end
-  
+
 end
