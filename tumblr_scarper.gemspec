@@ -32,6 +32,8 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "tumblr_client", "~> 0.8"
+  spec.add_dependency "multi_exiftool", "~> 0.9"
+  spec.add_dependency "nokogiri", "~> 1.6"
   spec.add_dependency "oauth", "~> 0.5"
   spec.add_development_dependency "bundler", "~> 1.16"
   spec.add_development_dependency "rake", "~> 10.0"
