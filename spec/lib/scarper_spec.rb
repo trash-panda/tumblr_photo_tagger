@@ -10,6 +10,8 @@ RSpec.describe TumblrScarper::Scarper do
   end
 
   it "does something useful" do
+    path = @scarper.scarp('enchantingimagery', 'my scan')
+              require 'pry'; binding.pry
     expect(false).to eq(true)
   end
 end
