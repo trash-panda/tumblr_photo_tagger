@@ -52,27 +52,29 @@ type}"
 
       break_loop = false
       loop do
-        cache_name = offset.to_s.rjust(total_posts_w,'0').gsub(' ','_')
-        cache_file = File.join(cache_path, "offset-#{cache_name}.json")
-        if ((offset + limit) < results['total_posts'])
+        if ((offset + limit) < total_posts)
           max = offset+limit-1
         else
           max = total_posts
           break_loop = true
         end
+
+        cache_name  = offset.to_s.rjust(total_posts_w,'0').gsub(' ','_')
+        cache_file  = File.join(cache_path, "offset-#{cache_name}.json")
         cache_label = "#{offset}..#{max}/#{total_posts} [#{scarp_label}]"
+
         if File.file? cache_file
           puts "-- skipping (already in cache) #{cache_label}"
         else
+          results=@client.posts(blog, args.merge(limit: limit, offset: offset))
           puts "== cached #{cache_label}"
           posts = results['posts']
           File.open(cache_file,'w'){|f| f.puts posts.to_json}
         end
+
         break if break_loop
+
         offset += limit
-        results =  @client.posts(blog, args.merge(limit: limit, offset: offset))
-        total_posts = results['total_posts']
-        total_posts_w = total_posts.to_s.size
       end
 
       cache_path
