@@ -75,15 +75,15 @@ def get_tumblr_oauth_token
   puts 'Secret: '.color(35) + access_secret_
 
   save_api_stuff_to_yaml({
-    :consumer_key => consumer_key,
+    :consumer_key    => consumer_key,
     :consumer_secret => consumer_secret,
-    :access_token => access_token_,
-    :access_secret => access_secret_,
+    :oauth_token     => access_token_,
+    :oauth_secret    => access_secret_,
   })
 end
 
 begin
-  if api_token_hash[:access_token] && api_token_hash[:access_secret]
+  if api_token_hash[:oauth_token] && api_token_hash[:oauth_secret]
     puts "INFO: Tumblr API access token and secret already found; skipping request"
   else
     get_tumblr_oauth_token
