@@ -1,6 +1,3 @@
-require 'tumblr_scarper/api_token_hash'
-require 'tumblr_client'
-
 require 'fileutils'
 require 'json'
 require 'yaml'
@@ -79,6 +76,7 @@ module TumblrScarper
         end
         photos.merge! _photos
       end
+      photos.delete_if{|k,v| k == :skipped_posts }
       puts "#### photos.size: '#{photos.size}'"
       puts "#### all tags \n" + all_tags( photos ).join("\n")
 
