@@ -1,7 +1,13 @@
 require "bundler/setup"
 require "tumblr_scarper"
+require 'fileutils'
+
+TMP_DIR = 'tmp'
 
 RSpec.configure do |config|
+  include FileUtils::Verbose
+  mkdir_p TMP_DIR
+
   # Enable flags like --only-failures and --next-failure
   config.example_status_persistence_file_path = ".rspec_status"
 

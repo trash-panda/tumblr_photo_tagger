@@ -27,28 +27,26 @@ module TumblrScarper
       @cache_dir_root = cache_dir || File.join(Dir.pwd,'tumblr_scarper_cache')
     end
 
-    def scarp(blog, tag=nil, type = nil, limit = 20, offset = 0 )
-      args       = {}
-
-      path_paths = blog
-      scarp_label = "#{blog}"
+    def scarp_label(blog, tag=nil, type = nil)
+      scarp_label = blog
       scarp_label += "/#{tag}" if tag
       scarp_label += "/#{type}" if type
-      if tag
-        args[:tag] = tag
-        path_paths  = "#{path_paths}/#{tag}"
-      end
-      if type
-        args[:type] = type
-        path_paths  = "#{path_paths}/:w
-type}"
-      end
-      cache_path = File.expand_path("#{path_paths}", @cache_dir_root)
+      scarp_label
+    end
+    def scarp(blog, tag=nil, type = nil, limit = 20, offset = 0 )
+      args       = {}
+      args[:tag] = tag if tag
+      args[:type] = type if type
+
+      scarp_label = scarp_label(blog,tag,type)
+      cache_path = File.expand_path("#{scarp_label}", @cache_dir_root)
+
       mkdir_p cache_path
 
       results =  @client.posts(blog, args.merge(limit: limit, offset: offset))
       total_posts   = results['total_posts']
       total_posts_w = total_posts.to_s.size
+      actual_post_count = 0
 
       break_loop = false
       loop do
@@ -67,15 +65,16 @@ type}"
           puts "-- skipping (already in cache) #{cache_label}"
         else
           results=@client.posts(blog, args.merge(limit: limit, offset: offset))
-          puts "== cached #{cache_label}"
           posts = results['posts']
+          actual_post_count += posts.size
           File.open(cache_file,'w'){|f| f.puts posts.to_json}
+          puts "== cached #{cache_label} posts: #{posts.size} count:" + \
+            " #{actual_post_count}"
         end
-
         break if break_loop
-
         offset += limit
       end
+      puts "== retreived metadata for #{actual_post_count} posts"
 
       cache_path
     end
