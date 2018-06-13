@@ -59,7 +59,7 @@ module TumblrScarper
       posts
     end
 
-    def normalize(blog, tag=nil, type = nil, limit = 20, offset = 0 )
+    def normalize(blog, tag=nil, type = nil)
       scarp_label = scarp_label(blog,tag,type)
       cache_path = File.expand_path("#{scarp_label}", @cache_dir_root)
       mkdir_p cache_path
