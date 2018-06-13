@@ -18,15 +18,15 @@ module TumblrScarper
     end
     map %w(--version -v) => :version
 
-    desc 'download BLOG [TAG] [TYPE] [CACHE_DIR]', 'Download and tag images from nomalized list'
+    desc 'download BLOG [TAG] [TYPE] [CACHE_DIR] [DOWNLOAD_DIR]', 'Download and tag images from nomalized list'
     method_option :help, aliases: '-h', type: :boolean,
                          desc: 'Display usage information'
-    def download(blog, tag = nil, type = nil, cache_dir = nil)
+    def download(blog, tag = nil, type = nil, cache_dir = nil, download_dir = nil)
       if options[:help]
         invoke :help, ['download']
       else
         require_relative 'commands/download'
-        TumblrScarper::Commands::Download.new(blog, tag, type, cache_dir, options).execute
+        TumblrScarper::Commands::Download.new(blog, tag, type, cache_dir, download_dir, options).execute
       end
     end
 
@@ -42,7 +42,7 @@ module TumblrScarper
       end
     end
 
-    desc 'scarp BLOG [TAG] [TYPE] [BATCH] [CACHE-DIR]', 'Scarp a Tumblr blog'
+    desc 'scarp BLOG [TAG] [TYPE] [BATCH] [CACHE_DIR]', 'Scarp a Tumblr blog'
     method_option :help, aliases: '-h', type: :boolean,
                          desc: 'Display usage information'
     def scarp(blog, tag = nil, type = nil, batch = 20, cache_dir = nil)

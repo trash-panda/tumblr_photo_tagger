@@ -10,8 +10,9 @@ module TumblrScarper
   class Downloader
     include  FileUtils::Verbose
     attr_accessor :cache_dir
-    def initialize(cache_dir=nil)
+    def initialize(cache_dir=nil, download_dir=nil)
       @cache_dir_root = cache_dir || File.join(Dir.pwd,'tumblr_scarper_cache')
+      @download_dir = download_dir
     end
 
     def scarp_label(blog, tag=nil, type = nil)
@@ -34,7 +35,7 @@ module TumblrScarper
 
       photos = normalized_photo_metadata(cache_path) # load photo metadata
 
-      download_dir = File.join(cache_path, 'downloaded_files')
+      download_dir = @download_dir || File.join(cache_path, 'downloaded_files')
       mkdir_p download_dir
       photos.each do |url,post|
         puts "\n## #{url}"
