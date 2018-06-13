@@ -5,6 +5,7 @@ PATH
       multi_exiftool (~> 0.9)
       nokogiri (~> 1.6)
       oauth (~> 0.5)
+      thor (~> 0.20)
       tumblr_client (~> 0.8)
 
 GEM
@@ -45,6 +46,7 @@ GEM
       rspec-support (~> 3.7.0)
     rspec-support (3.7.1)
     simple_oauth (0.3.1)
+    thor (0.20.0)
     tumblr_client (0.8.5)
       faraday (~> 0.9.0)
       faraday_middleware (~> 0.9.0)
