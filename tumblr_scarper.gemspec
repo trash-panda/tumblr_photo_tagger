@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Trash Panda"]
   spec.email         = ["trash-panda@users.noreply.github.com"]
 
-  spec.summary       = %q{Scrape and tag photos from Tumblr}
+  spec.summary       = %q{Scrape, normalize, and tag photos from Tumblr}
   spec.description   = %q{Download a Tumblr's photos and add XMP tags using exiftool}
   spec.homepage      = 'https://github.com/trash-panda/tumblr-scarper'
 
@@ -27,8 +27,8 @@ Gem::Specification.new do |spec|
   spec.files         = Dir.chdir(File.expand_path('..', __FILE__)) do
     `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
   end
-  spec.bindir        = "exe"
-  spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
+  spec.bindir        = "bin"
+  spec.executables   = spec.files.grep(%r{^bin/.*tumblr.*}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
   spec.add_dependency "tumblr_client", "~> 0.8"
