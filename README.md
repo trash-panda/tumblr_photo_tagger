@@ -44,7 +44,25 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+    # Step 1: Scarp
+    #   - Query Tumblr API for the blog's post data, cache it local *.json files
+    #   - Caches data to: `BLOGNAME/offset-###.json`
+    $ bundle exec bin/tumblr_scarper scarp BLOGNAME
+
+    # Step 2: Normalize tags
+    #   - Compiles the cached post data into a single file
+    #   - Determines (best) image URL, local filename, metadata to use in tags
+    #   - Any data sanitization happens here (tag subs, etc)
+    #   - Resulting file: `BLOGNAME/url-tags-downloads.yaml`
+    #   - Skipped (unusable) posts in file: `BLOGNAME/_skipped__answer.yaml`
+    $ bundle exec bin/tumblr_scarper normalize BLOGNAME
+
+    # Step 3: Download the posts!
+    #   - Downloads images
+    #   - Tags local files
+    #   - Copies files to: `BLOGNAME/downloaded_files`
+    #   - Everything is driven by the data in `BLOGNAME/_skipped__answer.yaml`
+    $ bundle exec bin/tumblr_scarper download BLOGNAME
 
 ## Reference
 
@@ -54,14 +72,20 @@ TODO: Write usage instructions here
 
 ### Details
 
-1. **Scarp** post data from Tumblr API + cache to `*.json` files on disk
-  - Paginates API data into paginated json files
+1. **Scarp**
+  - Fetches post data from Tumblr API
+    - Saves to a local cache of `*.json` files
+    - paginates API data into paginated .json files
   - Idempotent: cached API data is not queried on subsequent runs
+
 2. **Normalize** post metadata for each image, cache results to `*.yaml` files on disk
-  - uses `*.json` files cached from API scrape during stage 1
+  - Uses `*.json` files cached during Scarp in stage 1
   For each image:
     1. Determine best image URL to download
     2. Normalize tags into XMP-ready taxonomy
+      1. Fix up any problem tags (substitution, remove)
+    3. Determine best local filename for image
+
 3. **Download + Tag** image files
   - Uses `*.yaml` file(s) created/cached during stage 2
   - For each image:
@@ -79,8 +103,8 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/tumblr_scarper. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
+Bug reports and pull requests are welcome on GitHub at https://github.com/trash-panda/tumblr_scarper. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
 
 ## Code of Conduct
 
-Everyone interacting in the TumblrScarper project’s codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/[USERNAME]/tumblr_scarper/blob/master/CODE_OF_CONDUCT.md).
+Everyone interacting in the TumblrScarper project’s codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/trash-panda/tumblr_scarper/blob/master/CODE_OF_CONDUCT.md).
