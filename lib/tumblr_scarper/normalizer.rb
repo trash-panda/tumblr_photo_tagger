@@ -10,6 +10,7 @@ module TumblrScarper
       @cache_dir_root = cache_dir || File.join(Dir.pwd,'tumblr_scarper_cache')
     end
 
+    # TODO: read these from file?
     TAG_SUBS = {
       /^(\d\d\d\d)'s?$/ => 'decade/\1s',
       /^(\d\d\d\d)$/ => 'year/\1',
@@ -39,6 +40,10 @@ module TumblrScarper
       'Abigail', 'Adams', 'Dolley', 'Madison', 'Jensen', 'Lefevre', 'bois de boulogne', 'caroline', 'on a clear day you can see forever', 'mrs james frasier', 'merry-joseph blondel' ,
       'simon', 'raeburn', "Christie's", 'doucet',
     ].map(&:downcase)
+
+    SLUG_SUBS = {
+      /-posted-a-picture-to-the-patreon(-full-size)?/ => '',
+    }
 
     def scarp_label(blog, tag=nil, type = nil)
       scarp_label = blog
@@ -112,6 +117,21 @@ module TumblrScarper
       tags.sort.uniq
     end
 
+    # Transforms slug into someting better-suited to a local filename
+    # @params [String] slug a post slug
+    # @return [String] suitable local filename
+    def sanitize_slug(slug)
+      str = slug.dup
+      SLUG_SUBS.each do |k,v|
+        begin
+          str.gsub!(k,v)
+        rescue TypeError => e
+          require 'pry'; binding.pry
+        end
+      end
+      str
+    end
+
     def photo_data(photo,post,photo_src_field)
       data = {
         :tags     => sanitize_tags(post['tags']),
@@ -124,7 +144,7 @@ module TumblrScarper
         :format   => post['format'],
         :url      => post['post_url'],
         :image_permalink => post['image_permalink'],
-
+        :local_filename  => sanitize_slug(post['slug']),
       }
     end
 

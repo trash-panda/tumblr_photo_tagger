@@ -42,7 +42,7 @@ module TumblrScarper
         puts post.to_yaml
         puts '','----',''
 
-        file = "#{post[:slug]}#{File.extname(url)}"
+        file = "#{post[:local_filename]}#{File.extname(url)}"
         file_path = File.join( download_dir, file )
         unless File.exists? file_path
           downloaded_file = _download url
