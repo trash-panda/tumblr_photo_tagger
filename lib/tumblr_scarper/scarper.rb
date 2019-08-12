@@ -33,18 +33,18 @@ module TumblrScarper
       scarp_label += "/#{type}" if type
       scarp_label
     end
-    def scarp(blog, tag=nil, type = nil, limit = 20, offset = 0 )
-      args       = {}
-      args[:tag] = tag if tag
-      args[:type] = type if type
 
-      scarp_label = scarp_label(blog,tag,type)
+    def scarp(blog, args, limit = 20, offset = 0, delay = 2 )
+      scarp_label = scarp_label(blog, args[:tag], args[:type])
       cache_path = File.expand_path("#{scarp_label}", @cache_dir_root)
 
       mkdir_p cache_path
 
+      args.delete(:tag) unless args[:tag]
+      args.delete(:type) unless args[:type]
       results =  @client.posts(blog, args.merge(limit: limit, offset: offset))
-      total_posts   = results['total_posts']
+
+      total_posts   = results['total_posts'] || fail("ERROR: total posts is empty (\n  blog: '#{blog}'\n  results: #{results}\n  args: #{args}\n)")
       total_posts_w = total_posts.to_s.size
       actual_post_count = 0
 
@@ -66,10 +66,12 @@ module TumblrScarper
         else
           results=@client.posts(blog, args.merge(limit: limit, offset: offset))
           posts = results['posts']
+          require 'pry'; binding.pry unless posts.size
           actual_post_count += posts.size
           File.open(cache_file,'w'){|f| f.puts posts.to_json}
           puts "== cached #{cache_label} posts: #{posts.size} count:" + \
             " #{actual_post_count}"
+          sleep delay
         end
         break if break_loop
         offset += limit

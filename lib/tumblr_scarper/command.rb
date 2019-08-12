@@ -117,5 +117,21 @@ module TumblrScarper
       require 'tty-which'
       TTY::Which.exist?(*args)
     end
+
+    private
+
+    # Returns :blog frm arg, which can be a blog name or tumblr post uri
+    def blog_data_from_arg(arg)
+      data = {}
+      if arg =~ %r{^(https?://)?[a-z0-9_-]+\.tumblr.[a-z]+}
+        uri_parts = arg.sub(%r{^https?://},'').split('/')
+        data[:id] = uri_parts[2] if uri_parts[1] == 'post'
+        data[:tag] = uri_parts[2] if uri_parts[1] == 'tagged'
+        data[:blog] = uri_parts.first.split('.').first
+      elsif arg =~ /^[a-z0-9_-]+$/
+        data[:blog] = arg
+      end
+      data
+    end
   end
 end

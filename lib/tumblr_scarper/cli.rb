@@ -33,6 +33,18 @@ module TumblrScarper
     desc 'normalize BLOG [TAG] [TYPE] [CACHE_DIR]', 'Crunch tags and URLs from a scarped blog'
     method_option :help, aliases: '-h', type: :boolean,
                          desc: 'Display usage information'
+    method_option :ban_posts_tagged, aliases: '-D', type: :string,
+                         desc: 'Skip posts with any of these comma-delimited tags'
+    method_option :accept_posts_tagged, aliases: '-A', type: :string,
+                         desc: 'Only include posts with these comma-delimited tags'
+    method_option :delete_tags, aliases: '-d', type: :string,
+                         desc: 'Comma-delimited list of tags to remove from normalized tag list'
+    method_option :accept_tags, aliases: '-a', type: :string,
+                         desc: 'Comma-delimited list of image tags to include in normalized tag list'
+    method_option :lowercase_tags, aliases: '-l', type: :boolean,
+                         desc: 'transforms all image tags to lower case'
+    method_option :skip_untagged, aliases: '-s', type: :boolean,
+                         desc: 'skip images without tags'
     def normalize(blog, tag = nil, type = nil, cache_dir = nil)
       if options[:help]
         invoke :help, ['normalize']

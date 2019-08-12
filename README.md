@@ -61,7 +61,7 @@ Or install it yourself as:
     #   - Downloads images
     #   - Tags local files
     #   - Copies files to: `BLOGNAME/downloaded_files`
-    #   - Everything is driven by the data in `BLOGNAME/_skipped__answer.yaml`
+    #   - Everything is driven by the data in `BLOGNAME/url-tags-downloads.yaml`
     $ bundle exec bin/tumblr_scarper download BLOGNAME
 
 ## Reference
