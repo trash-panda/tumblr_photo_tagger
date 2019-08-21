@@ -42,10 +42,11 @@ module TumblrScarper
 
       download_dir = @download_dir || File.join(cache_path, 'downloaded_files')
       mkdir_p download_dir
+      n = 0
       photos.each do |url,post|
-        puts "\n## #{url}"
-        puts post.to_yaml
-        puts '','----',''
+        n+=1
+        puts '', "## [#{n.to_s.rjust(photos.size.to_s.size)}/#{photos.size}] #{url}"
+        puts post.to_yaml, '', '----', ''
 
         file = "#{post[:local_filename]}#{File.extname(url)}"
         file_path = File.join( download_dir, file )
@@ -54,12 +55,14 @@ module TumblrScarper
           cp downloaded_file, file_path
         else
           puts "-- skipping download - File exists: '#{file_path}'"
+          # TODO: make skipping metadata an option, too
+          # TODO TODO: make metadata its own object
+          # TODO TODO TODO: dl+metadata at same time OR metadata as a separate step
           ###puts "  -- skipping metadata, too!"
           ###next
         end
 
         post_datetime = DateTime.parse(post[:date_gmt])
-
         caption  = post_html_caption_to_markdown(post)
 
         writer = MultiExiftool::Writer.new
