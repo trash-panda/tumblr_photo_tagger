@@ -61,18 +61,18 @@ module TumblrScarper
         writer.overwrite_original = true
 
         writer_values = {
-        #'exif:imagedescription'      => caption,
-        'MWG:description'            => caption,
-        'xmp-dc:identifier'          => url,           # [dlf-1], [dlf-2]
-        'xmp-dc:source'              => url,           # [exif-url]
-        'xmp-dc:relation'            => [post[:url],post[:image_permalink]],  # [dlf-1]
-        'xmp-photoshop:source'       => url,           # displayed by DigiKam
-        'xmp-photoshop:credit'       => post[:url],    # displayed by DigiKam
-        #'xmp:subject'                => post[:tags],
-        'MWG:Keywords'               => post[:tags],
-        'xmp-mwg-coll:Collections'   => [],
-        'MWG:CreateDate'             => post_datetime,
-        #'xmp:createdate'             => post_datetime,
+          #'exif:imagedescription'      => caption,
+          'MWG:description'            => caption,
+          'xmp-dc:identifier'          => url,                                  # [dlf-1], [dlf-2]
+          'xmp-dc:source'              => url,                                  # [exif-url]
+          'xmp-dc:relation'            => [post[:url],post[:image_permalink]],  # [dlf-1]
+          'xmp-photoshop:source'       => url,                                  # displayed by DigiKam
+          'xmp-photoshop:credit'       => post[:url],                           # displayed by DigiKam
+          #'xmp:subject'                => post[:tags],
+          'MWG:Keywords'               => post[:tags],
+          'xmp-mwg-coll:Collections'   => [],
+          'MWG:CreateDate'             => post_datetime,
+          #'xmp:createdate'             => post_datetime,
         }
 
         writer_values['xmp-dc:title'] = post[:title] if post[:title]
@@ -81,12 +81,15 @@ module TumblrScarper
           writer_values['xmp-dc:relation'] = [post[:source_url]] + writer_values['xmp-dc:relation']
           writer_values['xmp-mwg-coll:Collections'] = [%Q[{CollectionName=Tumblr Source Post,CollectionURI=#{post[:source_url]}}]] + writer_values['xmp-mwg-coll:Collections']
         end
+
         if post[:link_url]
           writer_values['xmp-dc:relation'] = [post[:link_url]] + writer_values['xmp-dc:relation']
           writer_values['xmp-mwg-coll:Collections'] = [%Q[{CollectionName=Original Link,CollectionURI=#{post[:link_url]}}]] + writer_values['xmp-mwg-coll:Collections']
           writer_values['CreatorWorkURL'] = post[:link_url]
         end
+
         writer_values['xmp-mwg-coll:Collections'] << %Q[{CollectionName=Tumblr Post,CollectionURI=#{post[:url]}}]
+
         if post[:image_permalink]
           writer_values['xmp-mwg-coll:Collections'] << %Q[{CollectionName=Tumblr Image Permalink,CollectionURI=#{post[:image_permalink]}}]
         end
@@ -124,14 +127,12 @@ module TumblrScarper
           if writer.errors.any?{|e| e =~ /Error: Not a valid PNG \(looks more like a JPEG\)/}
              f=[]
              writer.filenames.each do |x|
-               require 'digest'
-               uniq_suffix = Digest::SHA256.hexdigest(url)[0..7]
-               y=x.sub(/\.png$/, "---png-#{uniq_suffix}.jpg")
+               y = x.sub(/\.png$/, "--png.jpg")
                mv x, y
                @log.happy "    !!! RENAMED '#{x}' to '#{y}'"
-               f<<y
+               f << y
              end
-             writer.filenames=f
+             writer.filenames = f
              result = writer.write
           end
 
@@ -152,8 +153,7 @@ module TumblrScarper
             end
           end
 
-
-        require 'pry'; binding.pry unless result
+          require 'pry'; binding.pry unless result
         end
       end
       dl_dir
@@ -196,9 +196,7 @@ module TumblrScarper
       if downloaded_file.is_a?(StringIO)
         tempfile = Tempfile.new("open-uri", binmode: true)
         IO.copy_stream(downloaded_file, tempfile.path)
-
         downloaded_file = tempfile
-
       end
 
       downloaded_file
