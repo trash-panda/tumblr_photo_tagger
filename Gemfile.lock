@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    tumblr_scarper (0.1.0)
+    tumblr_scarper (0.2.0)
       logging (~> 2.2)
       multi_exiftool (~> 0.9)
       nokogiri (~> 1.6)

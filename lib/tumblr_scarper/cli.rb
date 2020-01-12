@@ -6,7 +6,7 @@ module TumblrScarper
   # and the dispatch to various command objects
   #
   # @api public
-  class NewCLI
+  class CLI
     # Error raised by this runner
     Error = Class.new(StandardError)
 
