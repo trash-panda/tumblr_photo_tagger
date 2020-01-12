@@ -24,25 +24,25 @@ module TumblrScarper
       end
 
       @client = Tumblr::Client.new
-      @cache_dir_root = cache_dir || File.join(Dir.pwd,'tumblr_scarper_cache')
+      @cache_path = cache_dir || File.join(Dir.pwd,'tumblr_scarper_cache')
     end
 
-    def scarp_label(blog, tag=nil, type = nil)
-      scarp_label = blog
-      scarp_label += "/#{tag}" if tag
-      scarp_label += "/#{type}" if type
-      scarp_label
-    end
+    #def scarp(blog, args, limit = 20, offset = 0, delay = 2 )
+    def scarp(target, opts)
+      blog = target[:blog]
+      limit = opts[:batch]
+      offset = opts[:offset] || 0
+      delay = opts[:delay] || 2
+      args = target.dup.to_h.reject!{ |k| k.to_s =~ /\A(blog)\Z/ }
+      args.merge!( limit: limit, offset: offset)
 
-    def scarp(blog, args, limit = 20, offset = 0, delay = 2 )
-      scarp_label = scarp_label(blog, args[:tag], args[:type])
-      cache_path = File.expand_path("#{scarp_label}", @cache_dir_root)
 
-      mkdir_p cache_path
+      mkdir_p @cache_path
 
-      args.delete(:tag) unless args[:tag]
-      args.delete(:type) unless args[:type]
-      results =  @client.posts(blog, args.merge(limit: limit, offset: offset))
+      ###args.delete(:tag) unless args[:tag]
+      ###args.delete(:type) unless args[:type]
+        require 'pry'; binding.pry
+      results =  @client.posts(blog, args)
 
       total_posts   = results['total_posts'] || fail("ERROR: total posts is empty (\n  blog: '#{blog}'\n  results: #{results}\n  args: #{args}\n)")
       total_posts_w = total_posts.to_s.size
@@ -58,8 +58,8 @@ module TumblrScarper
         end
 
         cache_name  = offset.to_s.rjust(total_posts_w,'0').gsub(' ','_')
-        cache_file  = File.join(cache_path, "offset-#{cache_name}.json")
-        cache_label = "#{offset}..#{max}/#{total_posts} [#{scarp_label}]"
+        cache_file  = File.join(@cache_path, "offset-#{cache_name}.json")
+        cache_label = "#{offset}..#{max}/#{total_posts} [#{target}]"
 
         if File.file? cache_file
           puts "-- skipping (already in cache) #{cache_label}"
@@ -78,7 +78,7 @@ module TumblrScarper
       end
       puts "== retreived metadata for #{actual_post_count} posts"
 
-      cache_path
+      @cache_path
     end
 
   end

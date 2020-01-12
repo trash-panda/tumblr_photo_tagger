@@ -30,6 +30,7 @@ module TumblrScarper
     def normalized_photo_metadata  cache_path
       posts = []
       files_count = 0
+        require 'pry'; binding.pry 
       photos = YAML.load_file File.join(cache_path,"url-tags-downloads.yaml")
     end
 
