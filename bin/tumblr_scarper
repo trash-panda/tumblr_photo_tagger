@@ -1,7 +1,0 @@
-#!/usr/bin/env ruby
-
-require "bundler/setup"
-require "tumblr_scarper"
-require "tumblr_scarper/cli"
-
-TumblrScarper::CLI.start
