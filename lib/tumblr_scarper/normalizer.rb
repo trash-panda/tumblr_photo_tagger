@@ -54,7 +54,7 @@ module TumblrScarper
         files_count += 1
         post = JSON.parse File.read(file, :encoding => 'UTF-8')
         posts += post
-        puts "== #{post.size} #{posts.size}  #{file} "
+        @log.info "== #{post.size} #{posts.size}  #{file} "
       end
       posts
     end
@@ -76,7 +76,7 @@ module TumblrScarper
         photos.merge! post_photos
       end
       ###overwrite_hack(local_filenames, photos)  # added to prevent overwrites of theeternalrocks  TODO: add flag
-      print_summary(photos)
+      print_summary(photos, skipped_posts)
       # ---- end normalizing data
 
       cache_file  = File.join(cache_dir, "url-tags-downloads.yaml")
@@ -91,12 +91,25 @@ module TumblrScarper
 
     private
 
-    def print_summary(photos)
-      puts photos.to_yaml
-      puts "#### all tags \n" + all_tags( photos ).join("\n")
-      puts "#### total tags: #{all_tags( photos ).size}"
-      puts "#### photos without tags: #{photos.select{|k,v| v[:tags].empty? }.size}"
-      puts "#### photos.size: #{photos.size}"
+    def print_summary(photos, skipped_posts=nil)
+      log = ->(x){ @log.success(x) }
+      if photos.empty?
+        log = ->(x){ @log.warn(x) }
+      end
+      log.call photos.to_yaml
+      log.call "#### all tags:"
+      all_tags( photos ).each{ |tag| @log.happy("  #{tag}") }
+      log.call "#### total tags: #{all_tags( photos ).size}"
+      log.call "#### photos without tags: #{photos.select{|k,v| v[:tags].empty? }.size}"
+      log.call "#### photos.size: #{photos.size}"
+      if skipped_posts.empty?
+        log.call "####    no skipped posts!"
+      else
+        log.call "#### skipped posts: #{skipped_posts.map{|k,v| v.size}.sum}"
+        skipped_posts.each do |k,v|
+          log.call "####     #{k}: #{v.size}"
+        end
+      end
     end
 
 
@@ -114,7 +127,7 @@ module TumblrScarper
 
     def skip_post_with_banned_tags!(post_photos, skipped_posts)
       if post_photos.any?{|k,v| v[:tags].any?{|x| @options['ban_posts_tagged'].to_a.include?(x) } }
-        puts "------- skipping BANNED TAG photo posts from #{post['post_url']}"
+        @log.warn "------- skipping BANNED TAG photo posts from #{post['post_url']}"
         skipped_posts['BANNED_PHOTO_TAG'] ||= []
         skipped_posts['BANNED_PHOTO_TAG'] << post['post_url']
         post_photos.reject!{|k,v| true }
@@ -123,7 +136,7 @@ module TumblrScarper
 
     def skip_untagged_post!(post_photos, skipped_posts)
       if @options['skip_untagged'] && post_photos.map{|k,x| x[:tags] }.any?(&:empty?)
-        puts "------- skipping untagged photo posts from #{post['post_url']}"
+        @log.warn "------- skipping untagged photo posts from #{post['post_url']}"
         skipped_posts['UNTAGGED_PHOTO'] ||= []
         skipped_posts['UNTAGGED_PHOTO'] << post['post_url']
         post_photos.reject!{|k,v| true }
@@ -193,6 +206,7 @@ module TumblrScarper
         begin
           str.gsub!(k,v)
         rescue TypeError => e
+          @log.error "TypeError: #{e.message}"
           require 'pry'; binding.pry
         end
       end
@@ -202,7 +216,7 @@ module TumblrScarper
 
     # Return a photo data structure that can be used to download and tag a single image
     def photo_data(photo,post,photo_src_field)
-      data = {
+      {
         :tags     => sanitize_tags(post['tags']),
         :slug     => post['slug'],
         :caption  => post['caption'],
@@ -262,9 +276,9 @@ module TumblrScarper
         elsif ['chat', 'quote', 'audio', 'link', 'video', 'text','answer','regular'].include?(post['type'])
           photos[:skipped_posts][post['type']] ||= []
           photos[:skipped_posts][post['type']] << post['post_url']
-          puts "------- skipping #{post['type']} post from #{post['post_url']}"
+          @log.debug "------- skipping #{post['type']} post from #{post['post_url']}"
         else
-          puts "======= no .photos"
+          @log.info "======= no .photos"
           require 'pry'
           binding.pry
         end
