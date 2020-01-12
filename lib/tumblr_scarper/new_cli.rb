@@ -52,7 +52,7 @@ module TumblrScarper
         :targets   => nil,
         :log       => @log,
         :batch     => 20,
-        :cache_dir => Dir.pwd,
+        :cache_root_dir => Dir.pwd,
       )
     end
 
@@ -73,15 +73,18 @@ module TumblrScarper
       end.parse!
 
       @options[:targets] = args.map{|arg| blog_data_from_arg(arg) }
-			# TODO: add tags to target, based on options
-			# TODO: add types to target, based on options
+      # TODO: add tags to target, based on options
+      # TODO: add types to target, based on options
       @options[:target_cache_dirs] = {}
+      @options[:target_dl_dirs] = {}
       @options.targets.each do |target|
         # TODO: sanitize all keys + values for filesystem name
-				cache_ids = ((target.keys - [:blog]).sort.map{|k| "#{k}=#{target[k]}" })
-        dl_dir = File.join(@options.cache_dir, target[:blog])
-        cache_dir = dl_dir
+        cache_ids = ((target.keys - [:blog]).sort.map{|k| "#{k}=#{target[k]}" })
+        dl_dir = File.join(@options.cache_root_dir, target[:blog])
+        cache_dir = File.join(dl_dir,'.cache')
+
         @options[:target_cache_dirs][target] = cache_ids.empty? ? cache_dir : File.join(cache_dir, cache_ids)
+        @options[:target_dl_dirs][target] = dl_dir
       end
       args
     end
@@ -105,7 +108,7 @@ module TumblrScarper
       args = parse_args(argv)
       fail("No blog targets found in args: #{args.join(', ')}") unless @options[:targets]
       require 'yaml'
-      @log.debug("@options: #{@options.to_h.reject{|x| x == :log }.to_yaml}")
+      @log.debug("@options: #{@options.to_h.reject{|x| [:log,:target_cache_dirs,:target_dl_dirs].include?(x) }.to_yaml}")
       @log.warn("Targets to process: #{@options[:targets].join(", ")}")
 
       require_relative 'scarper'
@@ -114,19 +117,27 @@ module TumblrScarper
 
 
       @options.targets.each do |target|
+        @log.info( "\n\n==== TUMBLR SCARP: #{target}\n\n" )
         cache_dir = @options[:target_cache_dirs][target]
-				@scarper = TumblrScarper::Scarper.new cache_dir
-				path = @scarper.scarp(target, @options)
+        @scarper = TumblrScarper::Scarper.new cache_dir
+        path = @scarper.scarp(target, @options)
       end
 
       @options.targets.each do |target|
+        @log.info( "\n\n==== TUMBLR NORMALIZE: #{target}\n\n" )
         cache_dir = @options[:target_cache_dirs][target]
-				@normalizer = TumblrScarper::Normalizer.new cache_dir
-				path = @normalizer.normalize(target, @options)
+        @normalizer = TumblrScarper::Normalizer.new cache_dir
+        path = @normalizer.normalize(target, @options)
       end
-      require 'pry'; binding.pry
-    end
 
+      @options.targets.each do |target|
+        @log.info( "\n\n==== TUMBLR DOWNLOAD: #{target}\n\n" )
+        @downloader = TumblrScarper::Downloader.new @options
+        path = @downloader.download(target)
+      end
+
+      @log.info('FINIS!')
+    end
 
   end
 end

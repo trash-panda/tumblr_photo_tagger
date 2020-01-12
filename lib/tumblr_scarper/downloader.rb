@@ -10,56 +10,46 @@ module TumblrScarper
   class Downloader
     include  FileUtils::Verbose
     attr_accessor :cache_dir
-    def initialize(cache_dir=nil, download_dir=nil)
-      @cache_dir_root = cache_dir || File.join(Dir.pwd,'tumblr_scarper_cache')
-      @download_dir = download_dir
+    def initialize(options)
       @writer_errors = {
         corrected: [],
         failed: [],
       }
-    end
-
-    # TODO: refactor
-    def scarp_label(blog, tag=nil, type = nil)
-      scarp_label = blog
-      scarp_label += "/#{tag}" if tag
-      scarp_label += "/#{type}" if type
-      scarp_label
+      @options = options
+      @log = options.log
     end
 
     def normalized_photo_metadata  cache_path
       posts = []
       files_count = 0
-        require 'pry'; binding.pry 
       photos = YAML.load_file File.join(cache_path,"url-tags-downloads.yaml")
     end
 
-    def download(blog, tag=nil, type = nil, limit = 20, offset = 0 )
-      scarp_label = scarp_label(blog,tag,type)
-      cache_path = File.expand_path("#{scarp_label}", @cache_dir_root)
-      mkdir_p cache_path
+    def download(target)
+      cache_dir = @options[:target_cache_dirs][target]
+      dl_dir    = @options[:target_dl_dirs][target]
+      mkdir_p cache_dir
 
-      photos = normalized_photo_metadata(cache_path) # load photo metadata
+      photos = normalized_photo_metadata(cache_dir) # load photo metadata
 
-      download_dir = @download_dir || File.join(cache_path, 'downloaded_files')
-      mkdir_p download_dir
+      mkdir_p dl_dir
       n = 0
       photos.each do |url,post|
         n+=1
-        puts '', "## [#{n.to_s.rjust(photos.size.to_s.size)}/#{photos.size}] #{url}"
-        puts post.to_yaml, '', '----', ''
+        @log.info "\n## [#{n.to_s.rjust(photos.size.to_s.size)}/#{photos.size}] #{url}"
+        @log.info "#{post.to_yaml}\n----\n"
 
         file = "#{post[:local_filename]}#{File.extname(url)}"
-        file_path = File.join( download_dir, file )
+        file_path = File.join( dl_dir, file )
         unless File.exists? file_path
           downloaded_file = _download url
           cp downloaded_file, file_path
         else
-          puts "-- skipping download - File exists: '#{file_path}'"
+          @log.info "-- skipping download - File exists: '#{file_path}'"
           # TODO: make skipping metadata an option, too
           # TODO TODO: make metadata its own object
           # TODO TODO TODO: dl+metadata at same time OR metadata as a separate step
-          ###puts "  -- skipping metadata, too!"
+          ###@log.info "  -- skipping metadata, too!"
           ###next
         end
 
@@ -120,10 +110,10 @@ module TumblrScarper
         result = writer.write
         touch file_path, mtime: Time.parse(post_datetime.to_s)
 
-        puts caption.gsub('&#xd;&#xa;',"\n")
+        @log.info caption.gsub('&#xd;&#xa;',"\n")
 
         unless result || writer.errors.first =~ /\d image files updated$/
-          warn "WARNING: Tagging failed: '#{writer.errors}'"
+          @log.warn "WARNING: Tagging failed: '#{writer.errors}'"
           # WARNING: this will mean a subsequent dl will alway  dl the png again
           # TODO: record errors (see @writer_errors)
           if writer.errors.any?{|e| e =~ /Error: Not a valid PNG \(looks more like a JPEG\)/}
@@ -131,7 +121,7 @@ module TumblrScarper
              writer.filenames.each do |x|
                y=x.sub(/png$/,'jpg')
                mv x, y
-               warn "    !!! RENAMED '#{x}' to '#{y}'"
+               @log.warn "    !!! RENAMED '#{x}' to '#{y}'"
                f<<y
              end
              writer.filenames=f
@@ -145,11 +135,11 @@ module TumblrScarper
             #   http://owl.phy.queensu.ca/~phil/exiftool/faq.html#Q20
             #   exiftool -all= -tagsfromfile @ -all:all -unsafe -icc_profile bad.jpg
             cmd="exiftool -all= -tagsfromfile @ -all:all -unsafe -icc_profile '#{file_path}'"
-            puts "  == Trying to fix by running `#{cmd}` first"
-            puts `#{cmd}`
+            @log.info "  == Trying to fix by running `#{cmd}` first"
+            @log.info `#{cmd}`
             if $?.success?
-              puts "  ++ removed broken existing metadata!"
-              puts "  ++ rewriting metadata"
+              @log.info "  ++ removed broken existing metadata!"
+              @log.info "  ++ rewriting metadata"
               result = writer.write
               sleep 5 if result
             end
@@ -157,7 +147,7 @@ module TumblrScarper
 
         end
       end
-      download_dir
+      dl_dir
     end
 
     private
