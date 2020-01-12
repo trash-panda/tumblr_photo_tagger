@@ -246,7 +246,7 @@ module TumblrScarper
     def photos_from_post(post)
       url = ''
       photos = { :skipped_posts => {} }  # special key for skipped (non-photo) posts
-      photo_src_field = 'original_size'  # I think this is always 'original_size' now
+      photo_src_field = 'original_size'  # I think this is always 'original_size' now  # FIXME: sometimes panorama_size is present and better
 
       unless post.fetch('photos',[]).empty?
         # multiple photos in a post
@@ -254,17 +254,34 @@ module TumblrScarper
           url    = photo[photo_src_field]['url']
           photos[url]           = photo_data(photo,post,photo_src_field)
           if post['photos'].size > 1
-            offset = photo['offset']
-            unless offset
+            uniq_suffix = photo['offset']
+
+            unless uniq_suffix
+              # https://66.media.tumblr.com/4fe728e4d964c122b4076fd53b3a3bab/tumblr_p6ecom4XE31tx7g3jo3_640.jpg
+              #                                                                         this number -^^
               underscore_split = photo[photo_src_field]['url'].split('.')[-2].split('_')[-2]
-              if underscore_split
-                offset = underscore_split[-2][-1]
-              else
-                require 'digest'
-                offset = Digest::SHA256.hexdigest(photo[photo_src_field]['url'])[0..7]
+              uniq_suffix = underscore_split[-2..-1] if underscore_split
+            end
+
+            unless uniq_suffix
+              # https://66.media.tumblr.com/eb4c868d4e41d4c5e60340aaecdb6fcb/f29b935efda044aa-02/s1280x1920/125b0ea7408312ff7737239683c94380fc6688b6.jpg
+              # https://66.media.tumblr.com/eb4c868d4e41d4c5e60340aaecdb6fcb/f29b935efda044aa-02/s2048x3072/f73bac1c3c33aca7562704b36ea408e9f47f3151.jpg
+              # https://66.media.tumblr.com/eb4c868d4e41d4c5e60340aaecdb6fcb/f29b935efda044aa-02/s1280x1920/125b0ea7408312ff7737239683c94380fc6688b6.jpg
+              # https://66.media.tumblr.com/eb4c868d4e41d4c5e60340aaecdb6fcb/f29b935efda044aa-02/s640x960/c36c8a908c2ca5f80a2976d675563725297e8762.jpg
+              photoset_split = url.split('/')[-3]
+              if photoset_split.scan('-').size == 1
+                uniq_suffix = photoset_split.split('-').first[0..6] +'-'+ photoset_split.split('-')[-1].hex.to_s.rjust(3,'0')
               end
             end
-            photos[url][:local_filename] = sanitize_slug(post, offset)
+
+            unless uniq_suffix
+              # If we can't figure out any other way, just grab a snippet from the SHA256 of the URI
+              require 'digest'
+              uniq_suffix = Digest::SHA256.hexdigest(photo[photo_src_field]['url'])[0..7]
+              @log.error("URL not unique until Digest::256:   #{url}")
+            end
+
+            photos[url][:local_filename] = sanitize_slug(post, uniq_suffix)
             require 'pry'; binding.pry if photos[url][:local_filename] =~ /^--\d+/
           end
           photos[url][:caption] = photo['caption'] unless  photo['caption'].empty?

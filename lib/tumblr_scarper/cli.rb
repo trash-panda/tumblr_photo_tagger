@@ -84,9 +84,9 @@ module TumblrScarper
         end
 
         opts.separator "\nPipeline steps:\n"
-        opts.on('-1', '-s', '--[no-]scarp',  '[step 1] Scarp API data') { |v| @options[:pipeline][:scarp] = v }
-        opts.on('-2', '-n', '--[no-]normalize',  '[step 2] Normalize metadata') { |v| @options[:pipeline][:normalize] = v }
-        opts.on('-3', '-d', '--[no-]download',  '[step 3] Download + tag images') { |v| @options[:pipeline][:download] = v }
+        opts.on('-1', '--[no-]scarp',     '[step 1] Scarp API data') { |v| @options[:pipeline][:scarp] = v }
+        opts.on('-2', '--[no-]normalize', '[step 2] Normalize metadata') { |v| @options[:pipeline][:normalize] = v }
+        opts.on('-3', '--[no-]download',  '[step 3] Download + tag images') { |v| @options[:pipeline][:download] = v }
       end.parse!
 
       # If no specific steps were selected, turn on the entire pipeline
