@@ -286,7 +286,7 @@ module TumblrScarper
             photos[url][:local_filename] = sanitize_slug(post, uniq_suffix)
             require 'pry'; binding.pry if photos[url][:local_filename] =~ /^--\d+/
           end
-          photos[url][:caption] = photo['caption'] unless  photo['caption'].empty?
+          photos[url][:title] = photo['caption'] unless  photo['caption'].empty?
         end
       else
         url = post[photo_src_field]

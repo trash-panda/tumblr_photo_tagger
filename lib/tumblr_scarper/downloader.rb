@@ -75,6 +75,8 @@ module TumblrScarper
         #'xmp:createdate'             => post_datetime,
         }
 
+        writer_values['xmp-dc:title'] = post[:title] if post[:title]
+
         if post[:source_url]
           writer_values['xmp-dc:relation'] = [post[:source_url]] + writer_values['xmp-dc:relation']
           writer_values['xmp-mwg-coll:Collections'] = [%Q[{CollectionName=Tumblr Source Post,CollectionURI=#{post[:source_url]}}]] + writer_values['xmp-mwg-coll:Collections']
