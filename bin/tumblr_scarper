@@ -2,8 +2,8 @@
 
 require "bundler/setup"
 require "tumblr_scarper"
-require "tumblr_scarper/new_cli"
+require "tumblr_scarper/cli"
 
-cli = TumblrScarper::NewCLI.new
+cli = TumblrScarper::CLI.new
 cli.start(ARGV.dup)
 
