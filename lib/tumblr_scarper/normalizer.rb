@@ -240,7 +240,16 @@ module TumblrScarper
           url    = photo[photo_src_field]['url']
           photos[url]           = photo_data(photo,post,photo_src_field)
           if post['photos'].size > 1
-            offset = photo['offset'] || photo[photo_src_field]['url'].split('.')[-2].split('_')[-2][-1]
+            offset = photo['offset']
+            unless offset
+              underscore_split = photo[photo_src_field]['url'].split('.')[-2].split('_')[-2]
+              if underscore_split
+                offset = underscore_split[-2][-1]
+              else
+                require 'digest'
+                offset = Digest::SHA256.hexdigest(photo[photo_src_field]['url'])[0..7]
+              end
+            end
             photos[url][:local_filename] = sanitize_slug(post, offset)
             require 'pry'; binding.pry if photos[url][:local_filename] =~ /^--\d+/
           end
