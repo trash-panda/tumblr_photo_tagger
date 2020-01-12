@@ -1,6 +1,7 @@
 require 'fileutils'
 require 'json'
 require 'yaml'
+require 'digest'
 
 module TumblrScarper
   class Normalizer
@@ -260,9 +261,10 @@ module TumblrScarper
               # https://66.media.tumblr.com/4fe728e4d964c122b4076fd53b3a3bab/tumblr_p6ecom4XE31tx7g3jo3_640.jpg
               #                                                                         this number -^^
               underscore_split = photo[photo_src_field]['url'].split('/')[-1].split('.')[-2].split('_')
+              post_hash = Digest::SHA256.hexdigest(post['id'].to_s)[0..6]
               u = underscore_split.shift
               u = underscore_split.shift if u == 'tumblr'
-              uniq_suffix = u[0..6] + '-' + u[-2..-1].gsub(/^o/,'').rjust(2,'0')
+              uniq_suffix = post_hash[0..6] + '-' + u[-2..-1].gsub(/^o/,'').rjust(2,'0')
             end
 
             unless uniq_suffix
