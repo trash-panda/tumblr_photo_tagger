@@ -1,69 +1,139 @@
-# frozen_string_literal: true
-
-require 'thor'
+require 'optparse'
+require 'ostruct'
 
 module TumblrScarper
   # Handle the application command line parsing
   # and the dispatch to various command objects
   #
   # @api public
-  class CLI < Thor
+  class NewCLI
     # Error raised by this runner
     Error = Class.new(StandardError)
 
-    desc 'version', 'tumblr_scarper version'
     def version
       require_relative 'version'
       puts "v#{TumblrScarper::VERSION}"
     end
-    map %w(--version -v) => :version
 
-    desc 'download BLOG [TAG] [TYPE] [CACHE_DIR] [DOWNLOAD_DIR]', 'Download and tag images from nomalized list'
-    method_option :help, aliases: '-h', type: :boolean,
-                         desc: 'Display usage information'
-    def download(blog, tag = nil, type = nil, cache_dir = nil, download_dir = nil)
-      if options[:help]
-        invoke :help, ['download']
-      else
-        require_relative 'commands/download'
-        TumblrScarper::Commands::Download.new(blog, tag, type, cache_dir, download_dir, options).execute
-      end
+    def initialize
+      require 'logging'
+
+      # Default logger
+      #
+
+      # here we setup a color scheme called 'bright'
+      Logging.color_scheme( 'bright',
+        :levels => {
+          :info  => :green,
+          :warn  => :yellow,
+          :error => :red,
+          :fatal => [:white, :on_red]
+        },
+        :date => :gray,
+        :logger => :cyan,
+        :message => :magenta
+      )
+
+      Logging.appenders.stdout(
+        'stdout',
+        :layout => Logging.layouts.pattern(
+#          :pattern => '[%d] %-5l %c: %m\n',
+          :color_scheme => 'bright' #bright
+        )
+      )
+
+      @log = Logging.logger[TumblrScarper]
+
+      @log.appenders = Logging.appenders.stdout
+      @log.level = :warn
+      @log.warn  "#{self.class} init"
+
+      @options     = OpenStruct.new(
+        :targets   => nil,
+        :log       => @log,
+        :batch     => 20,
+        :cache_root_dir => Dir.pwd,
+      )
     end
 
-    desc 'normalize BLOG [TAG] [TYPE] [CACHE_DIR]', 'Crunch tags and URLs from a scarped blog'
-    method_option :help, aliases: '-h', type: :boolean,
-                         desc: 'Display usage information'
-    method_option :ban_posts_tagged, aliases: '-D', type: :string,
-                         desc: 'Skip posts with any of these comma-delimited tags'
-    method_option :accept_posts_tagged, aliases: '-A', type: :string,
-                         desc: 'Only include posts with these comma-delimited tags'
-    method_option :delete_tags, aliases: '-d', type: :string,
-                         desc: 'Comma-delimited list of tags to remove from normalized tag list'
-    method_option :accept_tags, aliases: '-a', type: :string,
-                         desc: 'Comma-delimited list of image tags to include in normalized tag list'
-    method_option :lowercase_tags, aliases: '-l', type: :boolean,
-                         desc: 'transforms all image tags to lower case'
-    method_option :skip_untagged, aliases: '-s', type: :boolean,
-                         desc: 'skip images without tags'
-    def normalize(blog, tag = nil, type = nil, cache_dir = nil)
-      if options[:help]
-        invoke :help, ['normalize']
-      else
-        require_relative 'commands/normalize'
-        TumblrScarper::Commands::Normalize.new(blog, tag, type, cache_dir, options).execute
+    def parse_args(argv)
+      args = OptionParser.new do |opts|
+        opts.banner = "Usage: tumblr_scarper [options] BLOG|POST ..."
+        # tag
+        # type
+        # batch
+        # cache_dir
+
+        opts.on("-v", "--[no-]verbose", "Run verbosely (additive)") do |v|
+          incr = ((v ? -1 : 1) * 1)
+          @options[:log].level += incr unless( (@options[:log].level + incr) < 0 )
+          @log.info( "Log level + #{incr}")
+          @log.info( Logging.show_configuration )
+        end
+      end.parse!
+
+      @options[:targets] = args.map{|arg| blog_data_from_arg(arg) }
+      # TODO: add tags to target, based on options
+      # TODO: add types to target, based on options
+      @options[:target_cache_dirs] = {}
+      @options[:target_dl_dirs] = {}
+      @options.targets.each do |target|
+        # TODO: sanitize all keys + values for filesystem name
+        cache_ids = ((target.keys - [:blog]).sort.map{|k| "#{k}=#{target[k]}" })
+        dl_dir = File.join(@options.cache_root_dir, target[:blog])
+        cache_dir = File.join(dl_dir,'.cache')
+
+        @options[:target_cache_dirs][target] = cache_ids.empty? ? cache_dir : File.join(cache_dir, cache_ids)
+        @options[:target_dl_dirs][target] = dl_dir
       end
+      args
     end
 
-    desc 'scarp BLOG [TAG] [TYPE] [BATCH] [CACHE_DIR]', 'Scarp a Tumblr blog'
-    method_option :help, aliases: '-h', type: :boolean,
-                         desc: 'Display usage information'
-    def scarp(blog, tag = nil, type = nil, batch = 20, cache_dir = nil)
-      if options[:help]
-        invoke :help, ['scarp']
-      else
-        require_relative 'commands/scarp'
-        TumblrScarper::Commands::Scarp.new(blog, tag, type, batch, cache_dir, options).execute
+    # Returns :blog frm arg, which can be a blog name or tumblr post uri
+    def blog_data_from_arg(arg)
+      data = {}
+      if arg =~ %r{^(https?://)?[a-z0-9_-]+\.tumblr.[a-z]+}
+        uri_parts = arg.sub(%r{^https?://},'').split('/')
+        data[:id] = uri_parts[2] if uri_parts[1] == 'post'
+        data[:tag] = uri_parts[2] if uri_parts[1] == 'tagged'
+        data[:blog] = uri_parts.first.split('.').first
+      elsif arg =~ /^[a-z0-9_-]+$/
+        data[:blog] = arg
       end
+      data
     end
+
+
+    def start(argv)
+      args = parse_args(argv)
+      fail("No blog targets found in args: #{args.join(', ')}") unless @options[:targets]
+      require 'yaml'
+      @log.debug("@options: #{@options.to_h.reject{|x| [:log,:target_cache_dirs,:target_dl_dirs].include?(x) }.to_yaml}")
+      @log.warn("Targets to process: #{@options[:targets].join(", ")}")
+
+      require_relative 'scarper'
+			scarper = TumblrScarper::Scarper.new @options
+      @options.targets.each do |target|
+        @log.info( "\n\n==== TUMBLR SCARP: #{target}\n\n" )
+        path = scarper.scarp(target)
+      end
+
+      require_relative 'normalizer'
+			normalizer = TumblrScarper::Normalizer.new @options
+      @options.targets.each do |target|
+        @log.info( "\n\n==== TUMBLR NORMALIZE: #{target}\n\n" )
+        path = normalizer.normalize(target)
+      end
+
+      require_relative 'downloader'
+      downloader = TumblrScarper::Downloader.new @options
+      @options.targets.each do |target|
+        @log.info( "\n\n==== TUMBLR DOWNLOAD: #{target}\n\n" )
+        path = downloader.download(target)
+      end
+
+      @log.info('FINIS!')
+    end
+
   end
 end
