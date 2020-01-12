@@ -114,15 +114,19 @@ module TumblrScarper
         @log.info caption.gsub('&#xd;&#xa;',"\n")
 
         unless result || writer.errors.first =~ /\d image files updated$/
-          @log.warn "WARNING: Tagging failed: '#{writer.errors}'"
+          @log.error "Tagging failed: '#{writer.errors}'"
+
           # WARNING: this will mean a subsequent dl will alway  dl the png again
           # TODO: record errors (see @writer_errors)
+
           if writer.errors.any?{|e| e =~ /Error: Not a valid PNG \(looks more like a JPEG\)/}
              f=[]
              writer.filenames.each do |x|
-               y=x.sub(/png$/,'jpg')
+               require 'digest'
+               uniq_suffix = Digest::SHA256.hexdigest(url)[0..7]
+               y=x.sub(/\.png$/, "---png-#{uniq_suffix}.jpg")
                mv x, y
-               @log.warn "    !!! RENAMED '#{x}' to '#{y}'"
+               @log.happy "    !!! RENAMED '#{x}' to '#{y}'"
                f<<y
              end
              writer.filenames=f
@@ -136,16 +140,18 @@ module TumblrScarper
             #   http://owl.phy.queensu.ca/~phil/exiftool/faq.html#Q20
             #   exiftool -all= -tagsfromfile @ -all:all -unsafe -icc_profile bad.jpg
             cmd="exiftool -all= -tagsfromfile @ -all:all -unsafe -icc_profile '#{file_path}'"
-            @log.info "  == Trying to fix by running `#{cmd}` first"
-            @log.info `#{cmd}`
+            @log.error "  == Trying to fix by running `#{cmd}` first"
+            @log.error `#{cmd}`
             if $?.success?
-              @log.info "  ++ removed broken existing metadata!"
-              @log.info "  ++ rewriting metadata"
+              @log.warn "  ++ removed broken existing metadata!"
+              @log.warn "  ++ rewriting metadata"
               result = writer.write
               sleep 5 if result
             end
           end
 
+
+        require 'pry'; binding.pry unless result
         end
       end
       dl_dir

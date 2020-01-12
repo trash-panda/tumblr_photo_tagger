@@ -259,8 +259,10 @@ module TumblrScarper
             unless uniq_suffix
               # https://66.media.tumblr.com/4fe728e4d964c122b4076fd53b3a3bab/tumblr_p6ecom4XE31tx7g3jo3_640.jpg
               #                                                                         this number -^^
-              underscore_split = photo[photo_src_field]['url'].split('.')[-2].split('_')[-2]
-              uniq_suffix = underscore_split[-2..-1] if underscore_split
+              underscore_split = photo[photo_src_field]['url'].split('/')[-1].split('.')[-2].split('_')
+              u = underscore_split.shift
+              u = underscore_split.shift if u == 'tumblr'
+              uniq_suffix = u[0..6] + '-' + u[-2..-1].gsub(/^o/,'').rjust(2,'0')
             end
 
             unless uniq_suffix
