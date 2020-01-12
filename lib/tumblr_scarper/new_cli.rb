@@ -112,28 +112,24 @@ module TumblrScarper
       @log.warn("Targets to process: #{@options[:targets].join(", ")}")
 
       require_relative 'scarper'
-      require_relative 'normalizer'
-      require_relative 'downloader'
-
-
+			scarper = TumblrScarper::Scarper.new @options
       @options.targets.each do |target|
         @log.info( "\n\n==== TUMBLR SCARP: #{target}\n\n" )
-        cache_dir = @options[:target_cache_dirs][target]
-        @scarper = TumblrScarper::Scarper.new cache_dir
-        path = @scarper.scarp(target, @options)
+        path = scarper.scarp(target)
       end
 
+      require_relative 'normalizer'
+			normalizer = TumblrScarper::Normalizer.new @options
       @options.targets.each do |target|
         @log.info( "\n\n==== TUMBLR NORMALIZE: #{target}\n\n" )
-        cache_dir = @options[:target_cache_dirs][target]
-        @normalizer = TumblrScarper::Normalizer.new cache_dir
-        path = @normalizer.normalize(target, @options)
+        path = normalizer.normalize(target)
       end
 
+      require_relative 'downloader'
+      downloader = TumblrScarper::Downloader.new @options
       @options.targets.each do |target|
         @log.info( "\n\n==== TUMBLR DOWNLOAD: #{target}\n\n" )
-        @downloader = TumblrScarper::Downloader.new @options
-        path = @downloader.download(target)
+        path = downloader.download(target)
       end
 
       @log.info('FINIS!')

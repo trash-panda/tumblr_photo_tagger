@@ -5,9 +5,9 @@ require 'yaml'
 module TumblrScarper
   class Normalizer
     include  FileUtils::Verbose
-    attr_accessor :cache_dir
-    def initialize(cache_dir=nil,options=nil)
-      @cache_path = cache_dir || File.join(Dir.pwd,'tumblr_scarper_cache')
+    def initialize(options)
+      @options = options
+      @log = @options.log
       @options = options || {}
     end
 
@@ -60,11 +60,12 @@ module TumblrScarper
     end
 
 
-    def normalize(target, options)
-      mkdir_p @cache_path
+    def normalize(target)
+      cache_dir = @options[:target_cache_dirs][target]
+      mkdir_p cache_dir
 
       # ---- start normalizing data
-      posts           = scarped_post_metadata(@cache_path)  # load scarped metadata
+      posts           = scarped_post_metadata(cache_dir)  # load scarped metadata
       photos          = {}
       skipped_posts   = {}
       local_filenames = {}
@@ -78,14 +79,14 @@ module TumblrScarper
       print_summary(photos)
       # ---- end normalizing data
 
-      cache_file  = File.join(@cache_path, "url-tags-downloads.yaml")
+      cache_file  = File.join(cache_dir, "url-tags-downloads.yaml")
       File.open( cache_file, 'w' ){|f| f.puts photos.to_yaml }
 
       skipped_posts.each do |post_type,files|
-        file = File.join(@cache_path, "_skipped__#{post_type}.yaml")
+        file = File.join(cache_dir, "_skipped__#{post_type}.yaml")
         File.open( file, 'w' ){|f| f.puts files.to_yaml }
       end
-      @cache_path
+      cache_dir
     end
 
     private

@@ -9,7 +9,6 @@ include  FileUtils::Verbose
 module TumblrScarper
   class Downloader
     include  FileUtils::Verbose
-    attr_accessor :cache_dir
     def initialize(options)
       @writer_errors = {
         corrected: [],

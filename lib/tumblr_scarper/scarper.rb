@@ -8,8 +8,10 @@ require 'yaml'
 module TumblrScarper
   class Scarper
     include  FileUtils::Verbose
-    attr_accessor :cache_dir
-    def initialize(cache_dir=nil)
+    def initialize(options)
+      @options = options
+      @log = @options.log
+
       api_token_hash = TumblrScarper::ApiTokenHash.new.api_token_hash
 
       if api_token_hash.empty?
@@ -24,19 +26,19 @@ module TumblrScarper
       end
 
       @client = Tumblr::Client.new
-      @cache_path = cache_dir || File.join(Dir.pwd,'tumblr_scarper_cache')
     end
 
-    def scarp(target, opts)
+    def scarp(target)
       blog = target[:blog]
-      limit = opts[:batch]
-      offset = opts[:offset] || 0
-      delay = opts[:delay] || 2
+      limit = @options[:batch]
+      offset = @options[:offset] || 0
+      delay = @options[:delay] || 2
       args = target.dup.to_h.reject!{ |k| k.to_s =~ /\A(blog)\Z/ }
       args.merge!( limit: limit, offset: offset)
 
+      cache_dir = @options[:target_cache_dirs][target]
 
-      mkdir_p @cache_path
+      mkdir_p cache_dir
 
       results =  @client.posts(blog, args)
 
@@ -54,7 +56,7 @@ module TumblrScarper
         end
 
         cache_name  = offset.to_s.rjust(total_posts_w,'0').gsub(' ','_')
-        cache_file  = File.join(@cache_path, "offset-#{cache_name}.json")
+        cache_file  = File.join(cache_dir, "offset-#{cache_name}.json")
         cache_label = "#{offset}..#{max}/#{total_posts} [#{target}]"
 
         if File.file? cache_file
@@ -74,7 +76,7 @@ module TumblrScarper
       end
       puts "== retreived metadata for #{actual_post_count} posts"
 
-      @cache_path
+      cache_dir
     end
 
   end
