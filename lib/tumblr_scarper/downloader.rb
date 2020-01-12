@@ -85,7 +85,9 @@ module TumblrScarper
           writer_values['CreatorWorkURL'] = post[:link_url]
         end
         writer_values['xmp-mwg-coll:Collections'] << %Q[{CollectionName=Tumblr Post,CollectionURI=#{post[:url]}}]
-        writer_values['xmp-mwg-coll:Collections'] << %Q[{CollectionName=Tumblr Image Permalink,CollectionURI=#{post[:image_permalink]}}]
+        if post[:image_permalink]
+          writer_values['xmp-mwg-coll:Collections'] << %Q[{CollectionName=Tumblr Image Permalink,CollectionURI=#{post[:image_permalink]}}]
+        end
 
 
         writer.values = writer_values.dup
