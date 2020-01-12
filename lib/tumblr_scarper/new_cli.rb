@@ -73,6 +73,16 @@ module TumblrScarper
       end.parse!
 
       @options[:targets] = args.map{|arg| blog_data_from_arg(arg) }
+			# TODO: add tags to target, based on options
+			# TODO: add types to target, based on options
+      @options[:target_cache_dirs] = {}
+      @options.targets.each do |target|
+        # TODO: sanitize all keys + values for filesystem name
+				cache_ids = ((target.keys - [:blog]).sort.map{|k| "#{k}=#{target[k]}" })
+        dl_dir = File.join(@options.cache_dir, target[:blog])
+        cache_dir = dl_dir
+        @options[:target_cache_dirs][target] = cache_ids.empty? ? cache_dir : File.join(cache_dir, cache_ids)
+      end
       args
     end
 
@@ -93,26 +103,26 @@ module TumblrScarper
 
     def start(argv)
       args = parse_args(argv)
-
       fail("No blog targets found in args: #{args.join(', ')}") unless @options[:targets]
       require 'yaml'
       @log.debug("@options: #{@options.to_h.reject{|x| x == :log }.to_yaml}")
       @log.warn("Targets to process: #{@options[:targets].join(", ")}")
+
       require_relative 'scarper'
       require_relative 'normalizer'
       require_relative 'downloader'
 
-      @options.targets.each do |target|
-        # TODO: sanitize all keys + values for filesystem name
-				cache_ids = ((target.keys - [:blog]).sort.map{|k| "#{k}=#{target[k]}" })
-        dl_dir = File.join(@options.cache_dir, target[:blog])
-        cache_dir = dl_dir
-        cache_dir = cache_ids.empty? ? cache_dir : File.join(cache_dir, cache_ids)
-				# TODO: add tags to target, based on options
-				# TODO: add types to target, based on options
 
+      @options.targets.each do |target|
+        cache_dir = @options[:target_cache_dirs][target]
 				@scarper = TumblrScarper::Scarper.new cache_dir
 				path = @scarper.scarp(target, @options)
+      end
+
+      @options.targets.each do |target|
+        cache_dir = @options[:target_cache_dirs][target]
+				@normalizer = TumblrScarper::Normalizer.new cache_dir
+				path = @normalizer.normalize(target, @options)
       end
       require 'pry'; binding.pry
     end

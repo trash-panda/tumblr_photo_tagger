@@ -27,7 +27,6 @@ module TumblrScarper
       @cache_path = cache_dir || File.join(Dir.pwd,'tumblr_scarper_cache')
     end
 
-    #def scarp(blog, args, limit = 20, offset = 0, delay = 2 )
     def scarp(target, opts)
       blog = target[:blog]
       limit = opts[:batch]
@@ -39,9 +38,6 @@ module TumblrScarper
 
       mkdir_p @cache_path
 
-      ###args.delete(:tag) unless args[:tag]
-      ###args.delete(:type) unless args[:type]
-        require 'pry'; binding.pry
       results =  @client.posts(blog, args)
 
       total_posts   = results['total_posts'] || fail("ERROR: total posts is empty (\n  blog: '#{blog}'\n  results: #{results}\n  args: #{args}\n)")
