@@ -2,6 +2,7 @@ require 'fileutils'
 require 'json'
 require 'yaml'
 require 'digest'
+require 'tumblr_scarper/content_helpers'
 
 module TumblrScarper
   class Normalizer
@@ -220,6 +221,7 @@ module TumblrScarper
       {
         :tags     => sanitize_tags(post['tags']),
         :slug     => post['slug'],
+        :title    => post['title'] || nil,
         :caption  => post['caption'],
         :url      => post['post_url'] || post['short_url'] || post['url'],
         :source_url  => post['source_url'] || nil,
@@ -288,6 +290,9 @@ module TumblrScarper
             photos[url][:local_filename] = sanitize_slug(post, uniq_suffix)
             require 'pry'; binding.pry if photos[url][:local_filename] =~ /^--\d+/
           end
+
+          # Individual photoset photos can have titles (Tumblr calls them 'captions')
+          # NOTE: In our photo metadata, this will replace the post[:title] (if there was one)
           photos[url][:title] = photo['caption'] unless  photo['caption'].empty?
         end
       else
@@ -296,9 +301,7 @@ module TumblrScarper
           photos[url] = photo_data(photo,post,photo_src_field)
         elsif post['type'] == 'text'
 
-          require 'nokogiri'
-          html = Nokogiri::HTML.fragment(post['body'])
-          imgs = html.css('img')
+          imgs = TumblrScarper::ContentHelpers.imgs(post['body'])
           embedded_photos = imgs.map do |x|
             {
               'caption' => '',
@@ -310,6 +313,10 @@ module TumblrScarper
             url =  photo['original_size']['url']
             data =  photo_data(photo,post,photo_src_field)
             data[:local_filename] += "-" +  (idx+1).to_s.rjust(2,'0')
+            caption  = TumblrScarper::ContentHelpers.post_html_caption_to_markdown(post['body'])
+            unless caption.to_s.strip.empty?
+              data[:caption] = caption
+            end
             photos[url] = data
           end
 

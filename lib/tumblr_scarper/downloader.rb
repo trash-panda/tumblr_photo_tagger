@@ -2,8 +2,8 @@ require 'yaml'
 
 require 'multi_exiftool'
 require 'fileutils'
-require 'nokogiri'
 require 'date'
+require 'tumblr_scarper/content_helpers'
 
 include  FileUtils::Verbose
 module TumblrScarper
@@ -53,7 +53,7 @@ module TumblrScarper
         end
 
         post_datetime = DateTime.parse(post[:date_gmt])
-        caption  = post_html_caption_to_markdown(post)
+        caption  = TumblrScarper::ContentHelpers.post_html_caption_to_markdown(post[:caption])
 
         writer = MultiExiftool::Writer.new
         writer.filenames = file_path
@@ -207,29 +207,6 @@ module TumblrScarper
     end
     ##-------------
 
-    def post_html_caption_to_markdown(post)
-      html = Nokogiri::HTML.fragment(post[:caption])
-      a_links = []
-      html.css('a').each do |a|
-        text = a.inner_text
-        a_links << a['href']
-        a.replace "[#{text}][#{a_links.size - 1}]"
-      end
-      html.css('br').each do |_p|
-        _p.replace "\n"
-      end
-      html.css('p').each do |_p|
-        text = _p.inner_text
-        _p.replace "#{text}\n"
-      end
-      html.css('blockquote').each do |_p|
-        text = _p.inner_text.split("\n").map{|x| "> #{x}" }.join("\n")
-        _p.replace "#{text}\n"
-      end
-
-      caption  = "#{html.to_str}\n#{a_links.each_with_index.map{|x,i| "[#{i}]: #{x}" }.join("\n")}".gsub("\n",'&#xd;&#xa;')
-      caption
-    end
   end
 end
 
