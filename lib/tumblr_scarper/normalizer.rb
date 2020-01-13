@@ -294,7 +294,28 @@ module TumblrScarper
         url = post[photo_src_field]
         if( post[photo_src_field] =~ /^http/ )
           photos[url] = photo_data(photo,post,photo_src_field)
-        elsif ['chat', 'quote', 'audio', 'link', 'video', 'text','answer','regular'].include?(post['type'])
+        elsif post['type'] == 'text'
+
+          require 'nokogiri'
+          html = Nokogiri::HTML.fragment(post['body'])
+          imgs = html.css('img')
+          embedded_photos = imgs.map do |x|
+            {
+              'caption' => '',
+              'original_size' => { 'url' => x['src'] },
+            }
+          end
+
+          embedded_photos.each_with_index do |photo, idx|
+            url =  photo['original_size']['url']
+            data =  photo_data(photo,post,photo_src_field)
+            data[:local_filename] += "-" +  (idx+1).to_s.rjust(2,'0')
+            photos[url] = data
+          end
+
+
+
+        elsif ['chat', 'quote', 'audio', 'link', 'video', 'answer','regular'].include?(post['type'])
           photos[:skipped_posts][post['type']] ||= []
           photos[:skipped_posts][post['type']] << post['post_url']
           @log.debug "------- skipping #{post['type']} post from #{post['post_url']}"
