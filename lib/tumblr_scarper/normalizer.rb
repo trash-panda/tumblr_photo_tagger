@@ -276,7 +276,7 @@ module TumblrScarper
               # https://66.media.tumblr.com/eb4c868d4e41d4c5e60340aaecdb6fcb/f29b935efda044aa-02/s640x960/c36c8a908c2ca5f80a2976d675563725297e8762.jpg
               photoset_split = url.split('/')[-3]
               if photoset_split.scan('-').size == 1
-                uniq_suffix = photoset_split.split('-').first[0..6] +'-'+ photoset_split.split('-')[-1].hex.to_s.rjust(3,'0')
+                uniq_suffix = photoset_split.split('-').first[0..6] + '-' + photoset_split.split('-')[-1].hex.to_s.rjust(3,'0')
               end
             end
 

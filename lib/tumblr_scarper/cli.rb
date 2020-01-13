@@ -8,6 +8,8 @@ module TumblrScarper
   #
   # @api public
   class CLI
+    DEFAULT_DL_DIR = '_tumblr_blog_images'
+
     # Error raised by this runner
     Error = Class.new(StandardError)
 
@@ -56,8 +58,8 @@ module TumblrScarper
         :targets   => nil,
         :log       => @log,
         :batch     => 20,
-        :cache_root_dir => File.join(Dir.pwd,'_tumblr_blog_images'),
-        :dl_root_dir    => File.join(Dir.pwd,'_tumblr_blog_images'),
+        :dl_root_dir    => File.join(Dir.pwd, DEFAULT_DL_DIR),
+        :cache_root_dir => nil,  # uses :dl_root_dir when nil
         :pipeline  => {
           :scarp     => false,
           :normalize => false,
@@ -84,6 +86,14 @@ module TumblrScarper
           @log.info( Logging.show_configuration )
         end
 
+        opts.on('-d', '--directory PATH', "Directory to download blogs + images (default: '#{DEFAULT_DL_DIR}')") do |path|
+          @options[:dl_root_dir] = path
+        end
+
+        opts.on('-c', '--cache-directory PATH', "Directory to cache blog metadata (default: same path as --directory)") do |path|
+          @options[:cache_root_dir] = path
+        end
+
         opts.separator "\nPipeline steps:\n"
         opts.on('-1', '--[no-]scarp',     '[step 1] Scarp API data') { |v| @options[:pipeline][:scarp] = v }
         opts.on('-2', '--[no-]normalize', '[step 2] Normalize metadata') { |v| @options[:pipeline][:normalize] = v }
@@ -102,11 +112,10 @@ module TumblrScarper
       @options[:target_dl_dirs] = {}
       @options.targets.each do |target|
         # TODO: sanitize all target keys + values for filesystem name
-        cache_root_dir = File.join(@options.cache_root_dir, target[:blog])
+        cache_root_dir = File.join((@options.cache_root_dir || @options.dl_root_dir), target[:blog])
         dl_dir         = File.join(@options.dl_root_dir, target[:blog])
         cache_dir      = File.join(cache_root_dir,'.cache')
-
-        cache_ids     = ((target.keys - [:blog]).sort.map{|k| "#{k}=#{target[k]}" })
+        cache_ids      = ((target.keys - [:blog]).sort.map{|k| "#{k}=#{target[k]}" })
         @options[:target_cache_dirs][target] = cache_ids.empty? ? cache_dir : File.join(cache_dir, cache_ids)
         @options[:target_dl_dirs][target] = dl_dir
       end

@@ -19,19 +19,16 @@ module TumblrScarper
     end
 
     def normalized_photo_metadata  cache_path
-      posts = []
-      files_count = 0
-      photos = YAML.load_file File.join(cache_path,"url-tags-downloads.yaml")
+      YAML.load_file File.join(cache_path,"url-tags-downloads.yaml")
     end
 
     def download(target)
       cache_dir = @options[:target_cache_dirs][target]
       dl_dir    = @options[:target_dl_dirs][target]
-      mkdir_p cache_dir
+      mkdir_p dl_dir
 
       photos = normalized_photo_metadata(cache_dir) # load photo metadata
 
-      mkdir_p dl_dir
       n = 0
       photos.each do |url,post|
         n+=1
