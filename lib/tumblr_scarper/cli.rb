@@ -56,7 +56,8 @@ module TumblrScarper
         :targets   => nil,
         :log       => @log,
         :batch     => 20,
-        :cache_root_dir => File.join(Dir.pwd,'tumblr_blogs'),
+        :cache_root_dir => File.join(Dir.pwd,'_tumblr_blog_images'),
+        :dl_root_dir    => File.join(Dir.pwd,'_tumblr_blog_images'),
         :pipeline  => {
           :scarp     => false,
           :normalize => false,
@@ -95,15 +96,15 @@ module TumblrScarper
       end
 
       @options[:targets] = args.map{|arg| blog_data_from_arg(arg) }
-      # TODO: add tags to target, based on *options*
+      # TODO: add tags for target, based on *options* (currently only one can be used per post, and it can only be extracted automatically from the post URI)
       # TODO: add types to target, based on *options*
       @options[:target_cache_dirs] = {}
       @options[:target_dl_dirs] = {}
       @options.targets.each do |target|
         # TODO: sanitize all target keys + values for filesystem name
-        blog_root_dir = File.join(@options.cache_root_dir, target[:blog])
-        dl_dir        = File.join(blog_root_dir)
-        cache_dir     = File.join(blog_root_dir,'.cache')
+        cache_root_dir = File.join(@options.cache_root_dir, target[:blog])
+        dl_dir         = File.join(@options.dl_root_dir, target[:blog])
+        cache_dir      = File.join(cache_root_dir,'.cache')
 
         cache_ids     = ((target.keys - [:blog]).sort.map{|k| "#{k}=#{target[k]}" })
         @options[:target_cache_dirs][target] = cache_ids.empty? ? cache_dir : File.join(cache_dir, cache_ids)
@@ -139,6 +140,8 @@ module TumblrScarper
 
       @log.happy('FINIS!')
     end
+
+    # -----
 
     def scarp
       require_relative 'scarper'
