@@ -40,7 +40,13 @@ module TumblrScarper
 
       mkdir_p cache_dir
 
-      results =  @client.posts(blog, args)
+      begin
+        results =  @client.posts(blog, args)
+      rescue Faraday::ConnectionFailed => e
+        @log.fatal e.error, e.message
+        @log.debug e.backtrace
+        fail( 'ERROR: connection to Tumblr API failed!' )
+      end
 
       total_posts   = results['total_posts'] || fail("ERROR: total posts is empty (\n  blog: '#{blog}'\n  results: #{results}\n  args: #{args}\n)")
       total_posts_w = total_posts.to_s.size
