@@ -94,13 +94,13 @@ module TumblrScarper
     private
 
     def print_summary(photos, skipped_posts=nil)
-      log = ->(x){ @log.success(x) }
+      log = ->(x){ @log.verbose(x) }
       if photos.empty?
         log = ->(x){ @log.warn(x) }
       end
       log.call photos.to_yaml
       log.call "#### all tags:"
-      all_tags( photos ).each{ |tag| @log.happy("  #{tag}") }
+      all_tags( photos ).each{ |tag| log.call("  #{tag}") }
       log.call "#### total tags: #{all_tags( photos ).size}"
       log.call "#### photos without tags: #{photos.select{|k,v| v[:tags].empty? }.size}"
       log.call "#### photos.size: #{photos.size}"

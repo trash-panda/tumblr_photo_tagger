@@ -33,20 +33,22 @@ module TumblrScarper
       photos.each do |url,post|
         n+=1
         @log.info "\n## [#{n.to_s.rjust(photos.size.to_s.size)}/#{photos.size}] #{url}"
-        @log.info "#{post.to_yaml}\n----\n"
+        @log.verbose "#{post.to_yaml}\n----\n"
 
         file = "#{post[:local_filename]}#{File.extname(url)}"
         file_path = File.join( dl_dir, file )
         unless File.exists? file_path
           downloaded_file = _download url
           cp downloaded_file, file_path
+          @log.success "Downloaded '#{url}' to '#{file_path}'"
         else
-          @log.info "-- skipping download - File exists: '#{file_path}'"
-          # TODO: make skipping metadata an option, too
+          @log.happy "SKIP: skipping download - File exists: '#{file_path}'"
           # TODO TODO: make metadata its own object
           # TODO TODO TODO: dl+metadata at same time OR metadata as a separate step
-          ###@log.info "  -- skipping metadata, too!"
-          ###next
+          unless @options[:tag_on_skipped_dl]
+            @log.happy "SKIP: skipping metadata, too!"
+            next
+          end
         end
 
         post_datetime = DateTime.parse(post[:date_gmt])
@@ -113,10 +115,10 @@ module TumblrScarper
         result = writer.write
         touch file_path, mtime: Time.parse(post_datetime.to_s)
 
-        @log.info caption.gsub('&#xd;&#xa;',"\n")
+        @log.verbose caption.gsub('&#xd;&#xa;',"\n")
 
         unless result || writer.errors.first =~ /\d image files updated$/
-          @log.error "Tagging failed: '#{writer.errors}'"
+          @log.error "TAG: Tagging failed: '#{writer.errors}'"
 
           # WARNING: this will mean a subsequent dl will alway  dl the png again
           # TODO: record errors (see @writer_errors)
@@ -140,18 +142,23 @@ module TumblrScarper
             #   http://owl.phy.queensu.ca/~phil/exiftool/faq.html#Q20
             #   exiftool -all= -tagsfromfile @ -all:all -unsafe -icc_profile bad.jpg
             cmd="exiftool -all= -tagsfromfile @ -all:all -unsafe -icc_profile '#{file_path}'"
-            @log.error "  == Trying to fix by running `#{cmd}` first"
+            @log.error "TAG:  == Trying to fix by running `#{cmd}` first"
             @log.error `#{cmd}`
             if $?.success?
-              @log.warn "  ++ removed broken existing metadata!"
-              @log.warn "  ++ rewriting metadata"
+              @log.warn "TAG:  ++ removed broken existing metadata!"
+              @log.warn "TAG:  ++ rewriting metadata"
               result = writer.write
               sleep 5 if result
             end
           end
 
-          require 'pry'; binding.pry unless result
+          unless result
+            @log.error "TAG: Tagging uncorrectably failed: '#{writer.errors}'"
+            require 'pry'; binding.pry
+          end
         end
+
+        @log.success "TAG: Tagged metadata for '#{file_path}'" if result
       end
       dl_dir
     end

@@ -22,18 +22,20 @@ module TumblrScarper
       require 'logging'
 
       # Default logger
-      Logging.init :debug, :info, :happy, :warn, :success, :error, :fatal
+      Logging.init :debug, :verbose, :info, :happy, :warn, :success, :error, :fatal
 
 
       # here we setup a color scheme called 'bright'
       Logging.color_scheme( 'bright',
-        :levels => {
-          :info  => :cyan,
-          :happy => :green,
-          :warn  => :yellow,
-          :success => [:blue],
-          :error => :red,
-          :fatal => [:white, :on_red]
+        :lines => {
+          :debug    => :blue,
+          :verbose  => :blue,
+          :info     => :cyan,
+          :happy   => :magenta,
+          :warn    => :yellow,
+          :success => :green,
+          :error    => :red,
+          :fatal    => [:white, :on_red]
         },
         :date => :gray,
         :logger => :cyan,
@@ -52,14 +54,15 @@ module TumblrScarper
 
       @log.appenders = Logging.appenders.stdout
       @log.level = :info
-      @log.warn  "#{self.class} init"
+      @log.info  "#{self.class} init"
 
       @options     = OpenStruct.new(
         :targets   => nil,
         :log       => @log,
         :batch     => 20,
-        :dl_root_dir    => File.join(Dir.pwd, DEFAULT_DL_DIR),
-        :cache_root_dir => nil,  # uses :dl_root_dir when nil
+        :dl_root_dir       => File.join(Dir.pwd, DEFAULT_DL_DIR),
+        :cache_root_dir    => nil,  # uses :dl_root_dir when nil
+        :tag_on_skipped_dl => false,
         :pipeline  => {
           :scarp     => false,
           :normalize => false,
@@ -92,6 +95,10 @@ module TumblrScarper
 
         opts.on('-c', '--cache-directory PATH', "Directory to cache blog metadata (default: same path as --directory)") do |path|
           @options[:cache_root_dir] = path
+        end
+
+        opts.on('-t', '--tag-on-skipped-dl', "Skipping a download skips the tag, too") do |v|
+          @options[:tag_on_skipped_dl] = v
         end
 
         opts.separator "\nPipeline steps:\n"
@@ -141,13 +148,13 @@ module TumblrScarper
       args = parse_args(argv)
       fail("No blog targets found in args: #{args.join(', ')}") unless @options[:targets]
       @log.debug("@options: #{@options.to_h.reject{|x| [:log,:target_cache_dirs,:target_dl_dirs].include?(x) }.to_yaml}")
-      @log.warn("Targets to process: #{@options[:targets].join(", ")}")
+      @log.verbose("Targets to process: #{@options[:targets].join(", ")}")
 
       @options[:pipeline][:scarp]     ? scarp     : @log.info('---- SKIPPED SCARP pipeline step (use -1)')
       @options[:pipeline][:normalize] ? normalize : @log.info('---- SKIPPED NORMALIZE pipeline step (use -2)')
       @options[:pipeline][:download]  ? download  : @log.info('---- SKIPPED DOWNLOAD pipeline step (user -3)')
 
-      @log.happy('FINIS!')
+      @log.success('FINIS!')
     end
 
     # -----
