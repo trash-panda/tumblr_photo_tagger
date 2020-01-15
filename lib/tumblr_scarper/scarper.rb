@@ -43,7 +43,7 @@ module TumblrScarper
       begin
         results =  @client.posts(blog, args)
       rescue Faraday::ConnectionFailed => e
-        @log.fatal e.error, e.message
+        @log.fatal e.message
         @log.debug e.backtrace
         fail( 'ERROR: connection to Tumblr API failed!' )
       end
