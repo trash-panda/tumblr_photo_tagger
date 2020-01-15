@@ -66,21 +66,21 @@ module TumblrScarper
         cache_label = "#{offset}..#{max}/#{total_posts} [#{target}]"
 
         if File.file? cache_file
-          puts "-- skipping (already in cache) #{cache_label}"
+          @log.happy "-- skipping (already in cache) #{cache_label}"
         else
           results=@client.posts(blog, args.merge(limit: limit, offset: offset))
           posts = results['posts']
           require 'pry'; binding.pry unless posts.size
           actual_post_count += posts.size
           File.open(cache_file,'w'){|f| f.puts posts.to_json}
-          puts "== cached #{cache_label} posts: #{posts.size} count:" + \
+          @log.info "== cached #{cache_label} posts: #{posts.size} count:" + \
             " #{actual_post_count}"
           sleep delay
         end
         break if break_loop
         offset += limit
       end
-      puts "== retreived metadata for #{actual_post_count} posts"
+      @log.info "== retreived metadata for #{actual_post_count} posts"
 
       cache_dir
     end
