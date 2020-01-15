@@ -32,7 +32,8 @@ module TumblrScarper
       n = 0
       photos.each do |url,post|
         n+=1
-        @log.info "\n## [#{n.to_s.rjust(photos.size.to_s.size)}/#{photos.size}] #{url}"
+        @log.info ''
+        @log.info "DOWNLOAD [#{n.to_s.rjust(photos.size.to_s.size)}/#{photos.size}] #{url}"
         @log.verbose "#{post.to_yaml}\n----\n"
 
         file = "#{post[:local_filename]}#{File.extname(url)}"
@@ -51,6 +52,7 @@ module TumblrScarper
           end
         end
 
+        @log.info "TAG [#{n.to_s.rjust(photos.size.to_s.size)}/#{photos.size}] #{file_path}"
         post_datetime = DateTime.parse(post[:date_gmt])
         caption  = TumblrScarper::ContentHelpers.post_html_caption_to_markdown(post[:caption])
 
@@ -209,7 +211,6 @@ module TumblrScarper
       raise if error.instance_of?(RuntimeError) && error.message !~ /redirection/
       raise Error, "download failed (#{url}): #{error.message}"
     end
-    ##-------------
 
   end
 end
