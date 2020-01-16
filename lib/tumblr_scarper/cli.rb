@@ -1,6 +1,6 @@
 require 'optparse'
-require 'ostruct'
 require 'yaml'
+require 'tumblr_scarper/options_helper'
 
 module TumblrScarper
   # Handle the application command line parsing
@@ -8,7 +8,8 @@ module TumblrScarper
   #
   # @api public
   class CLI
-    DEFAULT_DL_DIR = '_tumblr_blog_images'
+    include TumblrScarper::OptionsHelper
+
 
     # Error raised by this runner
     Error = Class.new(StandardError)
@@ -19,57 +20,9 @@ module TumblrScarper
     end
 
     def initialize
-      require 'logging'
-
-      # Default logger
-      Logging.init :debug, :verbose, :info, :happy, :warn, :success, :error, :fatal
-
-
-      # here we setup a color scheme called 'bright'
-      Logging.color_scheme( 'bright',
-        :lines => {
-          :debug    => :blue,
-          :verbose  => :blue,
-          :info     => :cyan,
-          :happy   => :magenta,
-          :warn    => :yellow,
-          :success => :green,
-          :error    => :red,
-          :fatal    => [:white, :on_red]
-        },
-        :date => :gray,
-        :logger => :cyan,
-        :message => :magenta
-      )
-
-      Logging.appenders.stdout(
-        'stdout',
-        :layout => Logging.layouts.pattern(
-#          :pattern => '[%d] %-5l %c: %m\n',
-          :color_scheme => 'bright' #bright
-        )
-      )
-
-      @log = Logging.logger[TumblrScarper]
-
-      @log.appenders = Logging.appenders.stdout
-      @log.level = :info
+      @options = default_options
+      @log = @options[:log]
       @log.info  "#{self.class} init"
-
-      @options     = OpenStruct.new(
-        :targets   => nil,
-        :log       => @log,
-        :batch     => 20,
-        :dl_root_dir       => File.join(Dir.pwd, DEFAULT_DL_DIR),
-        :cache_root_dir    => nil,  # uses :dl_root_dir when nil
-        :tag_on_skipped_dl => false,
-        :pipeline  => {
-          :scarp     => false,
-          :normalize => false,
-          :download  => false,
-          ### TODO: tag-only step ###  :tag       => false,
-        }
-      )
     end
 
     def parse_args(argv)
@@ -164,7 +117,7 @@ module TumblrScarper
       scarper = TumblrScarper::Scarper.new @options
       @options.targets.each do |target|
         @log.info( "\n\n==== TUMBLR SCARP: #{target}\n\n" )
-        path = scarper.scarp(target)
+        scarper.scarp(target)
       end
     end
 
@@ -173,7 +126,7 @@ module TumblrScarper
       normalizer = TumblrScarper::Normalizer.new @options
       @options.targets.each do |target|
         @log.info( "\n\n==== TUMBLR NORMALIZE: #{target}\n\n" )
-        path = normalizer.normalize(target)
+        normalizer.normalize(target)
       end
     end
 
@@ -182,7 +135,7 @@ module TumblrScarper
       downloader = TumblrScarper::Downloader.new @options
       @options.targets.each do |target|
         @log.info( "\n\n==== TUMBLR DOWNLOAD: #{target}\n\n" )
-        path = downloader.download(target)
+        downloader.download(target)
       end
     end
 
