@@ -52,6 +52,7 @@ module TumblrScarper
       total_posts_w = total_posts.to_s.size
       actual_post_count = 0
 
+      posts = nil
       break_loop = false
       loop do
         if ((offset + limit) < total_posts)
@@ -68,7 +69,7 @@ module TumblrScarper
         if File.file? cache_file
           @log.happy "-- skipping (already in cache) #{cache_label}"
         else
-          results=@client.posts(blog, args.merge(limit: limit, offset: offset))
+          results=@client.posts(blog, args.merge(limit: limit, offset: offset)) if posts
           posts = results['posts']
           require 'pry'; binding.pry unless posts.size
           actual_post_count += posts.size

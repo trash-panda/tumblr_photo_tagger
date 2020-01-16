@@ -67,6 +67,7 @@ DEPENDENCIES
   pry
   rake (~> 10.0)
   rspec (~> 3.0)
+  rspec-mocks (~> 3.0)
   tumblr_scarper!
 
 BUNDLED WITH

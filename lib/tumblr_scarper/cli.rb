@@ -65,26 +65,15 @@ module TumblrScarper
         @options.pipeline.keys.each{|k| @options.pipeline[k] = true }
       end
 
-      @options[:targets] = args.map{|arg| blog_data_from_arg(arg) }
-      # TODO: add tags for target, based on *options* (currently only one can be used per post, and it can only be extracted automatically from the post URI)
-      # TODO: add types to target, based on *options*
-      @options[:target_cache_dirs] = {}
-      @options[:target_dl_dirs] = {}
-      @options.targets.each do |target|
-        # TODO: sanitize all target keys + values for filesystem name
-        cache_root_dir = File.join((@options.cache_root_dir || @options.dl_root_dir), target[:blog])
-        dl_dir         = File.join(@options.dl_root_dir, target[:blog])
-        cache_dir      = File.join(cache_root_dir,'.cache')
-        cache_ids      = ((target.keys - [:blog]).sort.map{|k| "#{k}=#{target[k]}" })
-        @options[:target_cache_dirs][target] = cache_ids.empty? ? cache_dir : File.join(cache_dir, cache_ids)
-        @options[:target_dl_dirs][target] = dl_dir
-      end
+      targets = args.map{|arg| blog_data_from_arg(arg) }
+      @options = set_up_target_options(@options, targets)
       args
     end
 
     # Returns :blog frm arg, which can be a blog name or tumblr post uri
     def blog_data_from_arg(arg)
       data = {}
+      # TODO: handle custom URIs, like "https://scrap.oldbookillustrations.com/post/20056442123/anticipating-bombardments"
       if arg =~ %r{^(https?://)?[a-z0-9_-]+\.tumblr.[a-z]+}
         uri_parts = arg.sub(%r{^https?://},'').split('/')
         data[:id] = uri_parts[2] if uri_parts[1] == 'post'
