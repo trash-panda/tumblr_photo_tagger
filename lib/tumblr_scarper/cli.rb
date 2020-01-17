@@ -50,14 +50,19 @@ module TumblrScarper
           @options[:cache_root_dir] = path
         end
 
-        opts.on('-t', '--tag-on-skipped-dl', "Skipping a download skips the tag, too") do |v|
-          @options[:tag_on_skipped_dl] = v
-        end
-
         opts.separator "\nPipeline steps:\n"
         opts.on('-1', '--[no-]scarp',     '[step 1] Scarp API data') { |v| @options[:pipeline][:scarp] = v }
         opts.on('-2', '--[no-]normalize', '[step 2] Normalize metadata') { |v| @options[:pipeline][:normalize] = v }
         opts.on('-3', '--[no-]download',  '[step 3] Download + tag images') { |v| @options[:pipeline][:download] = v }
+
+        opts.separator "\nStep-specific options:\n"
+        opts.on('-a', '--[no-]cache-raw-api-results', "Cache raw API scarper results (used for testing)") do |v|
+          @options[:cache_raw_api_results] = v
+        end
+
+        opts.on('-t', '--[no-]tag-on-skipped-dl', "Skipping a download skips the tag, too") do |v|
+          @options[:tag_on_skipped_dl] = v
+        end
       end.parse!
 
       # If no specific steps were selected, turn on the entire pipeline

@@ -45,17 +45,18 @@ module TumblrScarper
     def default_options(log = default_logging)
       @options     = OpenStruct.new(
         :targets   => nil,
-        :log       => log,
         :batch     => 20,
-        :dl_root_dir       => File.join(Dir.pwd, DEFAULT_DL_DIR),
-        :cache_root_dir    => nil,  # uses :dl_root_dir when nil
-        :tag_on_skipped_dl => false,
+        :dl_root_dir           => File.join(Dir.pwd, DEFAULT_DL_DIR),
+        :cache_root_dir        => nil,  # uses :dl_root_dir when nil
+        :tag_on_skipped_dl     => false,
+        :cache_raw_api_results => false,
         :pipeline  => {
           :scarp     => false,
           :normalize => false,
           :download  => false,
           ### TODO: tag-only step ###  :tag       => false,
-        }
+        },
+        :log       => log,
       )
     end
 

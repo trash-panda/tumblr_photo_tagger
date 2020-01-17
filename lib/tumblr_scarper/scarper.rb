@@ -64,24 +64,30 @@ module TumblrScarper
 
         cache_name  = offset.to_s.rjust(total_posts_w,'0').gsub(' ','_')
         cache_file  = File.join(cache_dir, "offset-#{cache_name}.json")
+        api_cache_file  = File.join(cache_dir, "raw-api-results-offset-#{cache_name}.json")
         cache_label = "#{offset}..#{max}/#{total_posts} [#{target}]"
 
+        if @options[:cache_raw_api_results]
+          @log.info("SCARP: == cached **raw** API results #{cache_label}")
+          File.open(api_cache_file,'w'){|f| f.puts results.to_json}
+        end
+
         if File.file? cache_file
-          @log.happy "-- skipping (already in cache) #{cache_label}"
+          @log.happy "SCARP: -- skipping (already in cache) #{cache_label}"
         else
           results=@client.posts(blog, args.merge(limit: limit, offset: offset)) if posts
           posts = results['posts']
           require 'pry'; binding.pry unless posts.size
           actual_post_count += posts.size
           File.open(cache_file,'w'){|f| f.puts posts.to_json}
-          @log.info "== cached #{cache_label} posts: #{posts.size} count:" + \
+          @log.success "SCARP: == cached #{cache_label} posts: #{posts.size} count:" + \
             " #{actual_post_count}"
           sleep delay
         end
         break if break_loop
         offset += limit
       end
-      @log.info "== retreived metadata for #{actual_post_count} posts"
+      @log.info "SCARP: == retreived metadata for #{actual_post_count} posts"
 
       cache_dir
     end
