@@ -52,7 +52,7 @@ module TumblrScarper
     def scarped_post_metadata  cache_path
       posts = []
       files_count = 0
-      Dir[File.join(cache_path,'*.json')].sort.each do |file|
+      Dir[File.join(cache_path,'offset-*.json')].sort.each do |file|
         files_count += 1
         post = JSON.parse File.read(file, :encoding => 'UTF-8')
         posts += post
