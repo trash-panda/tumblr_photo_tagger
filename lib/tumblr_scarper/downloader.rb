@@ -132,16 +132,16 @@ module TumblrScarper
 
           # WARNING: this will mean a subsequent dl will alway  dl the png again
           # TODO: record errors (see @writer_errors)
+          if writer.errors.any?{|e| e =~ /Error: Not a valid ([A-Z]+) \(looks more like a JPEG\) - (.*)/}
+             ext         = $1.downcase
+             broken_file = $2
+             new_file    = broken_file.sub(/\.#{ext}$/i, "--#{ext}.jpg")
+             mv broken_file, new_file
+             @log.recovery "    !!! RENAMED '#{broken_file}' to '#{new_file}'"
 
-          if writer.errors.any?{|e| e =~ /Error: Not a valid PNG \(looks more like a JPEG\)/}
-             f=[]
-             writer.filenames.each do |x|
-               y = x.sub(/\.png$/, "--png.jpg")
-               mv x, y
-               @log.recovery "    !!! RENAMED '#{x}' to '#{y}'"
-               f << y
-             end
-             writer.filenames = f
+             # NOTE: write.filenames will always be a single file, so the "other_files" shouldn't be needed
+             other_files =  writer.filenames - [broken_file]
+             writer.filenames = [new_file] + other_files
              result = writer.write
           end
 
