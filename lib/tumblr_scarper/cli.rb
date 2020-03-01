@@ -78,14 +78,21 @@ module TumblrScarper
     # Returns :blog frm arg, which can be a blog name or tumblr post uri
     def blog_data_from_arg(arg)
       data = {}
-      # TODO: handle custom URIs, like "https://scrap.oldbookillustrations.com/post/20056442123/anticipating-bombardments"
-      if arg =~ %r{^(https?://)?[a-z0-9_-]+\.tumblr.[a-z]+}
+      case arg
+      when %r{^(https?://)?[a-z0-9_-]+\.tumblr.[a-z]+}
         uri_parts = arg.sub(%r{^https?://},'').split('/')
         data[:id] = uri_parts[2] if uri_parts[1] == 'post'
         data[:tag] = uri_parts[2] if uri_parts[1] == 'tagged'
         data[:blog] = uri_parts.first.split('.').first
-      elsif arg =~ /^[a-z0-9_-]+$/
+      when /^[a-z0-9_-]+$/
         data[:blog] = arg
+      when %r[^https?://([a-z0-9_.-]+)/]
+        data[:blog] = $1
+        uri_parts = arg.sub(%r{^https?://},'').split('/')
+        data[:id] = uri_parts[2] if uri_parts[1] == 'post'
+        data[:tag] = uri_parts[2] if uri_parts[1] == 'tagged'
+      else
+        @log.fatal "Cannot determine blog name from '#{arg}'!"
       end
       data
     end
