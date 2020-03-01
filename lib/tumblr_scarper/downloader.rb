@@ -38,8 +38,8 @@ module TumblrScarper
 
         file = "#{post[:local_filename]}#{File.extname(url)}"
         file_path = File.join( dl_dir, file )
-        file_path_subpng = file_path.sub(/\.png$/, "--png.jpg")
-        unless File.exists?(file_path) || (File.extname(url) == '.png' && File.exist?(file_path_subpng))
+        file_path_renamedjpg = file_path.sub(/\.(png|gif)$/, "--\\1.jpg")
+        unless File.exists?(file_path) || File.exist?(file_path_renamedjpg)
           downloaded_file = _download url
           cp downloaded_file, file_path
           @log.success "Downloaded '#{url}' to '#{file_path}'"
@@ -47,7 +47,7 @@ module TumblrScarper
           if File.exists?(file_path)
             @log.happy "SKIP: skipping download - File exists: '#{file_path}'"
           else
-            @log.happy "SKIP: skipping download - File exists: '#{file_path_subpng}'"
+            @log.happy "SKIP: skipping download - File exists: '#{file_path_renamedjpg}'"
           end
           # TODO TODO: make metadata its own object
           # TODO TODO TODO: dl+metadata at same time OR metadata as a separate step
