@@ -3,8 +3,8 @@ PATH
   specs:
     tumblr_scarper (0.2.0)
       logging (~> 2.2)
-      multi_exiftool (~> 0.9)
-      nokogiri (~> 1.6)
+      multi_exiftool (~> 0.12.0)
+      nokogiri (~> 1.10.8)
       oauth (~> 0.5)
       tumblr_client (~> 0.8)
 
@@ -30,13 +30,13 @@ GEM
     multi_exiftool (0.12.0)
     multi_json (1.14.1)
     multipart-post (2.1.1)
-    nokogiri (1.10.7)
+    nokogiri (1.10.8)
       mini_portile2 (~> 2.4.0)
     oauth (0.5.4)
     pry (0.11.3)
       coderay (~> 1.1.0)
       method_source (~> 0.9.0)
-    rake (10.5.0)
+    rake (13.0.1)
     rspec (3.7.0)
       rspec-core (~> 3.7.0)
       rspec-expectations (~> 3.7.0)
@@ -65,7 +65,7 @@ PLATFORMS
 DEPENDENCIES
   bundler (~> 1.16)
   pry
-  rake (~> 10.0)
+  rake (~> 13.0)
   rspec (~> 3.0)
   rspec-mocks (~> 3.0)
   tumblr_scarper!
