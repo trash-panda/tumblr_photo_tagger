@@ -8,7 +8,7 @@ module TumblrScarper
     def default_logging
 
       # Default logger
-      Logging.init :debug, :verbose, :info, :happy, :warn, :success, :error, :fatal
+      Logging.init :debug, :verbose, :info, :happy, :warn, :success, :error, :recovery, :fatal
 
 
       # here we setup a color scheme called 'bright'
@@ -17,9 +17,10 @@ module TumblrScarper
           :debug    => :blue,
           :verbose  => :blue,
           :info     => :cyan,
-          :happy   => :magenta,
-          :warn    => :yellow,
-          :success => :green,
+          :happy    => :magenta,
+          :warn     => :yellow,
+          :success  => :green,
+          :recovery => [:black, :on_green],
           :error    => :red,
           :fatal    => [:white, :on_red]
         },
@@ -37,7 +38,12 @@ module TumblrScarper
       )
 
       log = Logging.logger[TumblrScarper]
-      log.appenders = Logging.appenders.stdout
+      log.add_appenders(
+        Logging.appenders.stdout,
+        Logging.appenders.file('tumblr_scaper_errors.log', level: :recovery),
+        Logging.appenders.file('tumblr_scaper_errors.log', level: :error),
+        Logging.appenders.file('tumblr_scaper_errors.log', level: :fatal),
+      )
       log.level = :info
       log
     end

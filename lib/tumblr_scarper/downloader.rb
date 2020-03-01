@@ -89,9 +89,12 @@ module TumblrScarper
         end
 
         if post[:link_url]
-          writer_values['xmp-dc:relation'] = [post[:link_url]] + writer_values['xmp-dc:relation']
-          writer_values['xmp-mwg-coll:Collections'] = [%Q[{CollectionName=Original Link,CollectionURI=#{post[:link_url]}}]] + writer_values['xmp-mwg-coll:Collections']
-          writer_values['CreatorWorkURL'] = post[:link_url]
+          # NOTE: This hack fixes urls that uuencode special character EXCEPT for commas (violating RFC3986, section 2.3)
+          # TODO: is there a better way to handle this?
+          link_url = post[:link_url].gsub(',','%2C')
+          writer_values['xmp-dc:relation'] = [link_url] + writer_values['xmp-dc:relation']
+          writer_values['xmp-mwg-coll:Collections'] = [%Q[{CollectionName=Original Link,CollectionURI=#{link_url}}]] + writer_values['xmp-mwg-coll:Collections']
+          writer_values['CreatorWorkURL'] = link_url
         end
 
         writer_values['xmp-mwg-coll:Collections'] << %Q[{CollectionName=Tumblr Post,CollectionURI=#{post[:url]}}]
@@ -135,7 +138,7 @@ module TumblrScarper
              writer.filenames.each do |x|
                y = x.sub(/\.png$/, "--png.jpg")
                mv x, y
-               @log.happy "    !!! RENAMED '#{x}' to '#{y}'"
+               @log.recovery "    !!! RENAMED '#{x}' to '#{y}'"
                f << y
              end
              writer.filenames = f
@@ -152,16 +155,16 @@ module TumblrScarper
             @log.error "TAG:  == Trying to fix by running `#{cmd}` first"
             @log.error `#{cmd}`
             if $?.success?
-              @log.warn "TAG:  ++ removed broken existing metadata!"
-              @log.warn "TAG:  ++ rewriting metadata"
+              @log.recovery "TAG:  ++ removed broken existing metadata!"
+              @log.recovery "TAG:  ++ rewriting metadata"
               result = writer.write
               sleep 5 if result
             end
           end
 
           unless result
-            @log.error "TAG: Tagging uncorrectably failed: '#{writer.errors}'"
-            require 'pry'; binding.pry
+            @log.error "TAG: Tagging uncorrectably failed: '#{writer.errors}'\n\n\tfile: '#{file_path}'\n\tpost: '#{post[:url]}'\n\turl:  '#{url}'"
+            require 'pry'; binding.pry unless writer.errors.first =~ /^Warning: \[Minor\]/
           end
         end
 

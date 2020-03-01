@@ -23,7 +23,9 @@ module TumblrScarper
       /^court( (dress|gown))?$/i => 'dress:court dress',
       /^(colonies)$/i => 'colonial',
 
+      /^(historical|librarian|medieval) fashion$/i => 'fashion:\1',
       /^(Extant garments|feathers|regency|shawl|waistcoat|undergarments|underwear|uniform|robe|fancy dress|neoclassical|couture|belle epoque|baroque|Directoire|Empire|colonial|georgian|edwardian|victorian)$/i => 'fashion:\1',
+      /^(shirtdress)$/i => 'shirt dress',
       /^(dres)$/i => 'dress',
       /^(bow|bows)$/i => 'fashion:bows',
       /^(spencer)$/i => 'spencer jacket',
