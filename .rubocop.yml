@@ -9,3 +9,6 @@ Layout/LineLength:
 
 Layout/MultilineOperationIndentation:
   EnforcedStyle: indented
+
+Layout/HashAlignment:
+  EnforcedHashRocketStyle: table
