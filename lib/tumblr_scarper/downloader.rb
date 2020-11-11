@@ -84,6 +84,7 @@ module TumblrScarper
         'MWG:Keywords'             => post[:tags], # sets 'xmp:subject'
         'xmp-mwg-coll:Collections' => [],
         'MWG:CreateDate'           => post_datetime,
+        'XMP-tumblr:TumblrTags'    => post[:tags],
         #'xmp:createdate'             => post_datetime,
       }
 
@@ -116,6 +117,7 @@ module TumblrScarper
     def configured_exiftool_writer(file_path, url, post)
       writer = MultiExiftool::Writer.new
       writer.filenames = file_path
+      writer.config = File.join(__dir__,'files','.ExifTool_config')
       writer.options = { 'P' => true, 'E' => true }
       writer.overwrite_original = true
       writer.values = prepare_tag_data(url, post)

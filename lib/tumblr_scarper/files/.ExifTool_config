@@ -1,0 +1,27 @@
+# This file defines the custom tag:
+#
+#    * XMP-tumblr:TumblrTags [list] : Collection of tags from the image's Tumblr post
+#
+
+%Image::ExifTool::UserDefined = (
+    # new XMP namespaces (eg. tumblr) must be added to the Main XMP table:
+    'Image::ExifTool::XMP::Main' => {
+        tumblr => { # <-- must be the same as the NAMESPACE prefix
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::UserDefined::tumblr',
+                # (see the definition of this table below)
+            },
+        },
+    },
+);
+
+%Image::ExifTool::UserDefined::tumblr = (
+    GROUPS        => { 0 => 'XMP', 1 => 'XMP-tumblr', 2 => 'Image' },
+    NAMESPACE     => { 'tumblr' => 'http://ns.myname.com/tumblr/1.0/' },
+    WRITABLE      => 'string', # (default to string-type tags)
+    WRITABLE => 'list', # (default to string-type tags)
+    TumblrTags => { List => 'Bag' },
+);
+
+1;  #end
+
