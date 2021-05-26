@@ -1,4 +1,5 @@
 require 'nokogiri'
+require 'logging' # FIXME
 module TumblrScarper
   class ContentHelpers
 
@@ -7,27 +8,66 @@ module TumblrScarper
       html.css('img')
     end
 
+    # Converts html into simplistic markdown
     def self.post_html_caption_to_markdown(str)
-      html = Nokogiri::HTML.fragment(str)
-      a_links = []
+      log = Logging.logger[TumblrScarper] # FIXME
+      if str.nil?
+        log.todo "Somehow `str` is nil; investigate why!"
+        require 'pry'; binding.pry
+      end
+
+      html = Nokogiri::HTML.fragment(str.to_s.strip)
+      a_links = [] # List of urls for reference-style links (.e.g, `[hobbit-hole][1]`)
+
       html.css('a').each do |a|
         text = a.inner_text
         a_links << a['href']
         a.replace "[#{text}][#{a_links.size - 1}]"
       end
+
       html.css('br').each do |_p|
-        _p.replace "\n"
+        _p.replace "\r"
       end
-      html.css('p').each do |_p|
-        text = _p.inner_text
-        _p.replace "#{text}\n"
-      end
+
       html.css('blockquote').each do |_p|
         text = _p.inner_text.split("\n").map{|x| "> #{x}" }.join("\n")
         _p.replace "#{text}\n"
       end
 
-      caption  = "#{html.to_str}\n#{a_links.each_with_index.map{|x,i| "[#{i}]: #{x}" }.join("\n")}".gsub("\n",'&#xd;&#xa;')
+      html.css('p').each do |_p|
+        # text = _p.inner_text
+        text = _p.inner_text.gsub(/(?:\G|\A)\n/,"\r")
+        text.gsub!(/ *$/,'')
+        text.gsub!(/\n+/,' ')   # Remove line breaks from the html
+        text.gsub!("\r","\n")
+        _p.replace "#{text}\r"
+      end
+
+
+      caption_str = html.to_str
+      caption_str.gsub! /\r\n/, "\n"      # Remove extra line in EOL + <br>
+      caption_str.gsub! "\r", "\n"        # Make all EOLs into \n
+      caption_str.gsub! /[ \n\r]+\Z/, ''  # Strip spaces from the end
+      caption_str.strip!
+
+      # Reference-style markdown Links
+      #
+      # https://www.markdownguide.org/basic-syntax/#reference-style-links
+      reference_link_block = a_links.each_with_index.map{|url,label| "[#{label}]: #{url}" }.join("\n")
+      unless a_links.empty?
+        reference_link_block = "\n" + reference_link_block
+      end
+
+      caption  = [
+        caption_str,
+        reference_link_block,
+      ].join("\n")
+
+      caption.chomp!
+
+      # Replacing "\n" with '&#xd;&#xa;' allows line breaks on windows:
+      caption.gsub!("\n",'&#xd;&#xa;')
+
       caption
     end
   end
