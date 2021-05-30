@@ -1,0 +1,575 @@
+---
+tag_rules:
+  namespaces: "animals|archaeology|architecture|arms|hands|head|art|torso|costume|dress|fashion|folklore|god|goddess|hair|history|mythology|photography|shoes|torso|view|century|SPX|year|century|decade|looking|eyes|mouth"
+  reject:
+    # filter out obvious garbage tags
+    - !ruby/regexp /\A.*\b(you(r|'?re|'?d|'?ve|ll)|is|it's|its|his|her|their|so|oh|too|we('d|'ve|'re)?|was|to|had|i('m|'d|'ve)?|have|not|im|sorry|a|whatever|oops|has|in|ugh|yeah|sry|if|uh|pls)\b.*/i
+    - !ruby/regexp /\?|\!|\(|\)|\[|\]|\;|\.\.\.|\,/
+    - dragon age
+    - !ruby/regexp /\A(buy|op|semi vent|frens|nostalgia|sw|birthday|food|stylized|ocean|adventure time fan|guest|spam|vent|romana) art\Z/i
+    - !ruby/regexp /\A.*\b(batman|kylo|sw art|yay)\b.*/i
+  correct:
+    # translate mis-spellings
+    !ruby/regexp /\bgodd?ess?(?:es)?\Z/i: goddess
+    fashoin: fashion
+    lamasu: lamassu
+    concep art: concept art
+    ancien art: ancient art
+    fanart: fan art
+    blackandwhite: black and white
+    comic pages: comics
+    purlehair: purple hair
+    !ruby/regexp /\barcheology\b/i: archaeology
+    !ruby/regexp /\bstevenuniverse\b/i: steven universe
+    !ruby/regexp /\bafrican american\b/i: african-american
+    !ruby/regexp /\bpre-histor/i: prehistor
+    !ruby/regexp /\bcriature\b/i: creature
+    !ruby/regexp /\bbackgrond\b/i: background
+    !ruby/regexp /\benviroment\b/i: environment
+    # ensure singular
+    !ruby/regexp /\A(?<word>webcomic|OC|prop|background|forest|tree|stone|rock|bird|turtle|shark|romper|gown)s\Z/i: '\k<word>'
+    !ruby/regexp /\A(?<word>sketch|fish|dress)es\Z/i: '\k<word>'
+    !ruby/regexp /\b(?<word>comic|design|painting)s\Z/i: '\k<word>'
+    # ensure plural
+    !ruby/regexp /\A(?<word>ruin|shoe|sock|sport|slipper)\Z/i: '\k<word>s'
+    !ruby/regexp /\A(?<word>glove)\Z/i: '\k<word>es'
+
+    !ruby/regexp /\bphoto\Z/i: photography
+    !ruby/regexp /\Aart (?<word>tutorial|advice|process)s?\Z/: 'art/process'
+    !ruby/regexp /^(cashmere shawl)$/i: shawl
+    !ruby/regexp /\A(charadesign|chara design|charcter design|character design challenge|character-design|character designer|chacterdesign)\Z/i: character design
+    !ruby/regexp /^(dres)$/i: dress
+    !ruby/regexp /^(spencer jacket|tailcoat)$/i: coat:\1
+    !ruby/regexp /^wedding (dress|gown)$/i: dress:wedding
+    !ruby/regexp /^court( (dress|gown))?$/i: dress:court dress
+    !ruby/regexp /^(bonnet)$/i: hat:\1
+    !ruby/regexp /^(pompadour)$/i: hair:\1
+    !ruby/regexp /^(go;d)$/i: gold
+    !ruby/regexp /^(Romantic Era)$/i: era:romantic
+    !ruby/regexp /\+zz\Z/: '' # remove suffix added by old jq tests
+    !ruby/regexp /\b(especially\s+)/: ''
+    !ruby/regexp /\b([a-z]+)design\Z/: '\1 design'
+    ? !ruby/regexp /^(walking dress|hoop skirt|gown|dinner dress|court dress|court train|ball
+      gown|morning dress|evening dress|evening dres)$/i
+    : dress:\1
+  ns:
+    !ruby/regexp /\A(?<label>.*) (?<ns>art|mythology|architecture)\Z/i: '\k<ns>/\k<label> \k<ns>'
+    !ruby/regexp /\A(?<label>[^:/]+) (?<prefix>(?:%NAMESPACES%))\Z/i: '\k<prefix>/\k<prefix>:\k<label>' # |
+
+  transform:
+    # 'abc x' > 'x/x:abc x'
+    # preserve "ns/label", "ns/prefix:label", "prefix:label" tags
+    !ruby/regexp '/\A(?i)(?<ns>([a-z]+/[a-z]+:|[a-z]+:))(?<label>.+)\Z/': '\k<ns>\k<label>'  # |
+    ### transform "label prefix" into prefix:label" tags
+    !ruby/regexp /\A(?:(%NAMESPACES%))[/:].+/i: '\0'
+    !ruby/regexp /\A.*\b(inktober) ?(\d{4})\Z/i: '\1/\1 \2'
+    !ruby/regexp /\A.*\b(inktober)\b.*\Z/i: '\1'
+    !ruby/regexp /\A(?<label>.*) (?<ns>fashion)\Z/i: '\k<ns>/\k<ns>:\k<label>'  # //
+    !ruby/regexp /\Aspx\Z/i: 'SPX'
+    !ruby/regexp /\Aspx ?(?<year>.+)\Z/i: 'SPX/SPX \k<year>'
+    !ruby/regexp /\A\d{4}s\Z/: 'decade/\0'
+    !ruby/regexp /\A\d{4}\Z/: 'year/\0'
+    !ruby/regexp /\A(?<year>\d{1,}) BCE?\Z/i: 'year/\k<year> BCE'
+    !ruby/regexp /\A\d{1,2}(?:st|nd|rst|th)\Z/i: 'century/\0'  # really?
+    !ruby/regexp /\A(?<century>\d{1,}) century BCE?\Z/i: 'century/\k<century> BCE'
+    !ruby/regexp /\A(.*) (figurines?|figures?)\Z/i: 'figurines/figurine:\1'
+    !ruby/regexp /\A([a-z]+) ?(hair)\Z/i: '\2/\2:\1'
+    !ruby/regexp /\A(temple|palace|doric|ionic|corinthian|frieze|necropolis|monument|garden|catacombs)\Z/i: 'architecture/\1'
+    !ruby/regexp /\A.*\b(?<word>slippers|boots|shoes|heels|flats)\Z/i: 'fashion/shoes/shoes:\k<word>'
+    !ruby/regexp /\A(?<word>.+) (?<label>necklace)\Z/i: 'fashion/\k<label>/\k<label>:\k<word>'
+    # TODO: revisit how dress is handled (inconsistent with other fashion:)
+    !ruby/regexp /\Adress:(?<word>.+)|(?<word>.*\b(?:skirt|tights|dress))\Z/i: 'fashion/dress/\k<word>'
+    !ruby/regexp /\A(wiw|wiwt|wiwtd|what i wore today|what i wore|what i wear|ootd|outfit of the day)\Z/i: 'fashion/outfit of the day'
+    !ruby/regexp /\A(whatthelibrarianwore|librarian style)\Z/i: 'fashion/outfit of the day/librarian style'
+    !ruby/regexp /\A(wiwtw|work outfit)\Z/i: 'fashion/outfit of the day/work outfit'
+    !ruby/regexp /\A(?i)(artist|photographer)s?.?[oi]n.?tumblr\Z/i: '\1s on tumblr'
+      #    !ruby/regexp /\A(.*ubaid.*|kurgan|inca|na[zs]ca|olmec|anatolian?|pre-columbian|neo-assyrian?|Mayan|Chup.cuaro|Etruscan|Cucuteni-Trypillian|Ixtlán|Izapa|Vikings?|aztec|nubian|babylon(?:ian)?|assyrian?|Kushite|Sumerian?\Z/i: 'culture/\1'
+      #    !ruby/regexp /\A(pyramid|mound|Venus of .+|figurine|ancient art\\Z|mound of venus|Catal H.*|gob.kli tepe|trilithon|.*stonehenge\\Z|Stone circles|Judeideh|petroglyphs|rock carvings|runestones?|menhir|.*lithic|.*liths?|tumuli|grave|cave paintings|Jomon period|.* age|.* stele)\Z/i: 'archaeology/\1'
+    !ruby/regexp /\bnsfw\b/i: nsfw
+  select:
+    namespaces: !ruby/regexp /\A(%NAMESPACES%)\Z/i
+    general: !ruby/regexp /\A(underwater|purple|landscape|vintage|temple|dungeonsanddragons|cryptid|blazer|sci fi|forest|armor|medieval|anime|anthropology|cute|sports)\Z/i # // else NOMATCH
+    archaeology: !ruby/regexp /\A(archaeology|prehistory|ancient|sumerian|cuneiform|artefact)\Z/i
+    art_techniques: !ruby/regexp /\A(doodle|brush and ink|gouache|painting|charcoal|photoshop|photography|watercolor|digital painting|ink|illustration|inktober)\Z/i
+    art_ref: !ruby/regexp /\A(photoref|figure|turnaround|anatomy|nude|nsfw)\Z/i
+    art: !ruby/regexp /\A(art|background|animation|design|portrait|(?:character|creature|costume|game|book|graphic) design|comic|sketch|sketchbook|sculpture|prop|statue|webcomic|writing|storyboard|wip|speedpaint|cartoon|color|original|oc)\Z/i
+    clothes: !ruby/regexp /\A(sweater|glasses|shoes|slippers|fashion|romper)\Z/i
+    animals: !ruby/regexp /\A(animal of the week|animals?|bird|turtle|shark|fish)\Z/i
+    science: !ruby/regexp /\A(science|biology|astronomy|geology|anthropology|architecture|history|prehistory)\Z/i
+    environment: !ruby/regexp /\A(environment|rural|plants?|tree)\Z/i
+    locations: !ruby/regexp /\A(environment|rural)\Z/i
+    colors: !ruby/regexp /\A(red|green|blue|yellow|purple|orange|gray|black|white|pink|brown|iridescent|colorful|plaid)\Z/
+    mythology: /\A(lamassu|god|goddess)\Z/i
+    series: \/A(Steven Universe|Adventure Time|Doctor Who|Rivers of London)\Z/i
+    #    !ruby/regexp /\A(animal of the week|underwater|design|glasses||sweater|backgrounds|socks|ink pen|flowers|museum|animation|wip|pre.?histor(?:y|ic)|head|economics|etymology|language|religion|poitics|women|ceramic|military|monarchy|technology|black and white|paleontology||wwi|oc|typography|wwii|anthropology|science|biology|mountains?|woods?|rural|farm|forests?|nature|moss|autumn|spring|winter|summer|sunlight|trees?|stones?|rocks?|mythology|runic|cryptids?|birds?|illustration|History|Inktober|water|architecture|art deco|sculpture|statue|stele|etruscan|caryatid|greek|animals|drawing|photography|portrait|fashion|costumes?|figures?|figure drawing|geology|language|euskera|hieroglyphs|Process|hieroglyphics|Video (?:Tutorial|Process)|tutorials?|Watercolors?|Style|study|Paleolithic Art|comics?|gestures?|goddess|armor|gods?|vintage|classic|sketch(?:book)?|character.designs?|commissions?|concept.*|ink|line art|fish|sharks?|ootd|happy|expressions?|selfie|eyes|faces?|desert|digital art|drawthisinyourstyle|fanzine|etymology|national aquarium|storyboard|aquarium|aquatic|ancient wales|apollonia|Steven Universe|terracotta|indus civilization|scarf|fairy tales|doodle|landscape|whatthelibrarianwore|history|wiw|nude|nsfw|ruins|tomb|painting|wales|uk|digital|fanart|unposed|traditional|art|gouache)\Z/i #^ // else NOMATCH
+
+test_input:
+  general:
+    - lamasu
+    - something we don't care about
+    - Greek Mythology
+    - mythology:roman
+    - mythology/mythology:norse
+    - inktober2020
+    - greek art
+    - 3rd century bce
+    - dragon age
+    - Dragon Age
+    - 19th Century fashion
+    - 'fashion:victorian'
+    - Animal of the Week
+    - stone figurine
+    - clay figure
+    - tlatilco figure
+    - maternity figure
+    - long hair
+    - hair
+    - greenhair
+    - tree
+    - old stone
+    - '1940'
+    - 1940s
+    - doric
+    - doric architecture
+    - heels
+    - burgundy heels
+    - vintage necklace
+    - dress:mini
+    - flowing dress
+    - Artists on Tumblr
+    - art tutorial
+    - art/process
+    - 1920s fashion
+    - fashion/fashion:1920s
+    - Architecture
+    - gouache
+    - movie costumes
+    - creature design
+    - character designs
+    - comic
+    - comics
+    - Comics
+    - sports
+    - OC
+    - artefact
+    - turnaround
+    - 'backgrounds'
+  namespaces:
+    - 'pose:hanging'
+    - 'century/19th'
+    - 'archeology/assyria'
+    - 'archeology/izapa'
+    - 'archeology/izapa'
+    - 'stela'
+    - 'archeology/olmec'
+  animals:
+    - bird
+    - birds
+    - turtles
+    - sharks
+  art:
+    - 'roman art'
+    - 'greek art'
+    - 'ancient art'
+    - 'digital art'
+    - 'my art'
+    - 'concept art'
+    - 'game art'
+    - 'egyptian art'
+    - 'background art'
+    - 'character art'
+    - 'turkish art'
+    - 'thracian art'
+    - 'hellenistic art'
+    - 'romana art'
+    - 'etruscan art'
+    - 'line art'
+    - 'environment art'
+    - 'traditional art'
+    - 'sci fi art'
+    - 'production art'
+    - 'etrsucan art'
+    - 'fine art'
+    - 'rock art'
+    - 'cave art'
+    - 'jewish art'
+    - 'album art'
+    - 'spam art'
+    - 'birthday art'
+    - 'prehistoric art'
+    - 'spanish art'
+    - 'gift art'
+    - 'ancien art'
+    - 'ocean art'
+    - 'graphic art'
+    - 'experimental art'
+    - 'envrionment art'
+    - 'lycian art'
+    - 'commission art'
+    - 'original art'
+    - 'neolithic art'
+    - 'nostalgia art'
+    - 'modern art'
+    - 'body art'
+    - 'plastic art'
+    - 'digitial art'
+    - 'food art'
+    - 'adventure time fan art'
+    - 'Digital art'
+    - 'concep art'
+    - 'frens art'
+    - 'buy art'
+    - 'music art'
+    - 'pueblo rock art'
+    - 'ice age art'
+    - 'perfomance art'
+    - 'cover art'
+    - 'vinyl art'
+    - 'vent art'
+    - 'african art'
+    - 'bronze art'
+    - 'clay art'
+    - 'official art'
+    - 'sw art'
+    - 'stylized art'
+    - 'kylo ren art'
+    - 'yay art'
+    - 'backgrond art'
+    - 'french art'
+    - 'guest art'
+    - 'comment art'
+    - 'semi vent art'
+    - 'batman fan art'
+    - 'traditonal art'
+    - 'iranian art'
+    - 'israel art'
+    - 'flemish art'
+    - 'marlik art'
+    - 'marble art'
+    - 'contemporary art'
+    - 'abstract art'
+    - 'russian art'
+    - 'Digital Art'
+    - 'Roman Art'
+    - 'Fan Art'
+    - 'Background Art'
+    - 'Concept Art'
+    - 'Op Art'
+    - 'Neolithic Art'
+    - 'Paleolithic Art'
+  fashion:
+    - historical fashion
+    - Victorian fashion
+    - librarian fashion
+    - victorian fashion
+    - work fashion
+    - library fashion
+    - petite fashion
+    - men's fashion
+    - black fashion
+    - indian fashion
+    - renaissance fashion
+    - Medieval Fashion
+    - editorial fashion
+    - women's fashion
+    - diverse fashion
+    - hijab fashion
+    - Mens Fashion
+    - edwardian fashion
+    - mens fashion
+    - minimalist fashion
+    - Victorian Fashion
+    - medieval fashion
+    - Librarian fashion
+    - fall fashion
+  inktober:
+    - inktober2019
+    - inktober2017
+    - inktober2018
+    - inktober 2016
+    - inktober2016
+    - inktober ladies
+    - inktober2015
+    - digital inktober
+    - inktober 2017
+    - Inktober2017
+    - inktober 2015
+    - inktober 2018
+    - inktober2020
+    - inktober 1
+    - Inktober2018
+    - inktober inktober2018
+  spx:
+    - SPX 2014
+    - spx
+    - SPX
+    - spx 2014
+    - spx2016
+    - spx2017
+  anatomy:
+    - nsfw
+    - nsfw for nudit
+    - hands
+    - head:up
+  years:
+    - '3 bce'
+    - '4 bce'
+    - '6 bce'
+    - '1 bce'
+    - '1 ce'
+    - '2 ce'
+    - '3 BCE'
+    - '2 BCE'
+    - '4 BCE'
+    - '1 BCE'
+    - '9000 BCE'
+    - '2000 BC'
+    - '1500 BC'
+    - '1600 BC'
+    - '4000 BC'
+    - '3500 BC'
+    - '1100BC'
+    - '1750 BC'
+    - '1185BC'
+    - '1250 BC'
+    - '500BC'
+    - '7000 BC'
+    - '1 CE'
+    - '2 CE'
+    - '0 CE'
+    - '3 CE'
+    - '4 CE'
+    - '3 ce'
+    - '0 ce'
+    - '4 ce'
+    - '5 bce'
+    - '2 bce'
+    - '0 bce'
+    - '7 bce'
+    - '1 bc'
+    - '3rd century bc'
+    - '4th century bc'
+    - '900 bc'
+    - 'year/6 bce'
+    - 'year/3 bce'
+    - 'year/2 bce'
+    - 'year/2019'
+    - 'year/2017'
+    - 'year/1969'
+    - 'year/2016'
+    - 'year/2018'
+    - 'year/2015'
+    - 'year/1965'
+    - 'year/2014'
+    - 'year/1968'
+    - 'year/2020'
+    - 'year/1970'
+    - 'year/1941'
+    - 'year/2011'
+    - 'year/1967'
+    - 'year/1400'
+    - 'year/1916'
+    - 'year/1963'
+    - 'year/1976'
+    - 'year/1959'
+    - 'year/1931'
+    - 'year/1957'
+    - 'year/1939'
+    - 'year/1905'
+    - 'year/1880'
+    - 'year/1922'
+    - 'year/1956'
+    - 'year/1951'
+    - 'year/2008'
+    - 'year/1958'
+    - 'year/2012'
+    - 'year/1988'
+    - 'century/20th'
+    - 'century/18th'
+    - 'century/15th'
+    - 'century/16th'
+    - 'century/11th'
+    - 'century/10th'
+    - 'century/17th'
+    - 'century/14th'
+    - 'century/12th'
+    - 'decade/1800s'
+    - 'decade/1880s'
+    - 'decade/1960s'
+    - '19th'
+    - '20th cent'
+    - '19th century fashion'
+    - '20th'
+    - '4th of july'
+    - 'july4th'
+    - '5th century'
+    - '9th century'
+    - '20th anniversary'
+    - '10th dynasty egypt'
+    - '8th century'
+    - '9th Century'
+    - '7th century'
+    - 'mid 19th century'
+    - '18th'
+    - '17th'
+    - '11th'
+    - '1920s fashion'
+    - '1920s'
+    - '1960s fashion'
+    - '1910s fashion'
+    - '1910s'
+    - '1950s'
+    - '1930s'
+    - '1920s wedding'
+    - '1960s'
+    - '1800s'
+    - '1860s'
+    - '1970s'
+    - '2000s'
+    - '1950s movies'
+    - '1900s'
+    - '2014'
+    - '1941'
+    - '3rd century'
+  history:
+    - art history
+    - ancient history
+    - welsh history
+    - american history
+    - prehistory
+    - australian history
+    - chinese history
+    - african history
+    - jewish history
+    - british history
+    - libyan history
+    - Welsh history
+    - British history
+    - History
+    - medieval history
+    - history/history:welsh+zz
+    - english history
+    - canadian history
+    - japanese history
+    - American history
+    - iraq'history
+    - african-american history
+    - african american history
+    - french history
+    - Australian History
+    - russian history
+    - black history
+    - indian history
+    - european history
+    - mexican history
+    - pre-history
+    - indonesian history
+    - missed in history
+    - american museum of natural history
+    - asian-american history
+    - islamic history
+    - nigerian history
+    - natural history
+    - iraq. history
+  figurines:
+    - stone figurine
+    - ceramic figurine
+    - egyptian figurine
+    - mexico figurine
+    - ivory figurine
+    - cycladic figurine
+    - lizard figurines
+    - hellenistic figurine
+    - parthian figurine
+    - kneeling figurine
+    - iran figurine
+    - ancient figure
+    - marble figure
+    - olmec figure
+    - bone figures
+    - clay figure
+    - tlatilco figure
+    - mexico figure
+    - pop! figures
+    - seated figure
+    - deity figure
+    - gold figure
+    - limestone figure
+    - stone figure
+    - copper figure
+    - inca figure
+    - clay figures
+    - dogu figure
+    - maternity figure
+  character design:
+    - charadesign
+    - chara design
+    - charcter design
+    - character design challenge
+    - character-design
+    - character designer
+    - chacterdesign
+  other design:
+    - gamedesign
+    - graphic design
+    - book design
+    - concept design
+    - game design
+    - costume design
+    - environment design
+    - toronto
+    - criature design
+    - enviroment design
+    - gamedesign
+    - celtic design
+  hair:
+    - african american hair
+    - black hair styles
+    - naturalhair
+    - relaxed hair
+    - shaven hair
+    - curly hair
+    - purplehair
+    - gray hair
+    - pinkhair
+    - darkhair
+    - whitehair
+    - especially long wavy hair
+    - i just really like drawing long hair
+    - greenhair
+    - bluehair
+    - aside from ryou doesn't like cutting his hair
+    - and yes zan's hair curls it's canon now
+    - her hair is such a paiiiiin
+    - drawing wet hair is hard fyi
+    - the black hair suits her so much??
+    - yes ryou had short hair once as a little babby
+    - blue hair
+    - what is your hair you undignified oaf
+    - snake hair
+    - vintage hairstyles
+    - curlyhair
+    - zuhair murad
+    - Afro hair
+    - the long hair would annoy him to no end
+    - i was too lazy to fix his hair part whoops
+    - felt like giving her long hair again too
+    - he loses hair bands easily so he'll take whatever he can get
+    - i wasn't going to draw the band in his hair at first that's why there's one in his mouth too
+    - oh look facial hair
+    - her hair?? her mouth????
+    - i made his hair extra fluffy because who knows why
+    - her hair looks so gooood
+    - i hate. his hair!!
+    - black hair
+    - dark hair
+    - greyhair
+    - purlehair
+    - shorthair
+    - blackhair
+    - superflowyhair
+    - needahaircut
+    - pink hair
+    - my messy hair
+    - the other chair legs disappeared oops whatever
+    - omg yes he has short hair

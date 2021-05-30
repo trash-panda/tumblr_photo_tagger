@@ -18,48 +18,81 @@ module TumblrScarper
     # add
     # uniq
     def normalize(tags)
-      tags = reject(tags)
-      tags = correct(tags)
-      tags = transform(tags)
-      tags = select(tags)
-      tags = add(tags)
-      tags = reject(tags) # second round of rejections in case we just recreated one?
-      tags = uniq(tags)
-    end
-
-    def reject(tags)
-      tags.reject{ |tag| @tag_rules['reject'].any? {|rule| tag.downcase.match?(rule)} }
-    end
-
-    def correct(tags)
-      tags.map do |tag|
-        @tag_rules['correct'].inject(tag) do |tag,rule|
-          @log.debug "(correct) tag: '#{tag}', rule: '#{rule}'"
-          tag.sub(rule[0],rule[1])
-        end
-      end
-    end
-
-    def transform(tags)
       paired_results = {}
-      results = tags.map do |tag|
-        r_tag = @tag_rules['transform'].inject(tag) do |tag,rule|
-          @log.debug "(transform) tag: '#{tag}', rule: '#{rule}'"
-          tag.downcase.sub(rule[0],rule[1]) # TODO should this always downcase?
-        end
+      tags = tags.map do |tag|
+        paired_results[tag] = ''
+        next(nil) if reject?(tag)
+        r_tag = correct(tag.downcase)
+        r_tag = correct(r_tag.downcase,stage: 'ns')
+        r_tag = transform_and_stop(r_tag) || select(r_tag)
+        next(nil) unless r_tag
+        #tags = add(tags)
+        #tags = reject(tags) # second round of rejections in case we just recreated one?
+        #tags = uniq(tags)
         paired_results[tag] = r_tag
         r_tag
-      end
+      end.reject(&:nil?)
 
       kmax = paired_results.keys.map(&:size).max
       vmax = paired_results.values.map(&:size).max
-      warn paired_results.sort_by(&:last).to_h.map{|k,v| "#{v.ljust(vmax+1)} (#{k})" }.join("\n")
-        #require 'pry'; binding.pry
-        results
+      #warn paired_results.sort_by(&:last).to_h.map{|k,v| "#{v.ljust(vmax+1)} (#{k})" }.join("\n")
+      warn paired_results.to_h.map{|k,v| "#{v.ljust(vmax+1)} < #{k}" }.join("\n")
+      tags.uniq
     end
 
-    def select(tags)
-      require 'pry'; binding.pry
+    def reject?(tag)
+      @tag_rules['reject'].any? {|rule| tag.downcase.match?(rule)}
+    end
+
+    def correct(tag,stage: 'correct')
+      @tag_rules[stage].inject(tag) do |tag,rule|
+        rxp = rule[0]
+        if rule[0].class == Regexp && rule.to_s.match?('%NAMESPACES')
+          rxp = Regexp.new rule[0].to_s.gsub('%NAMESPACES%', @tag_rules['namespaces'])
+        end
+
+        if rxp.match? tag
+          r_tag = tag.downcase.sub(rxp,rule[1])
+          warn "  #{"(#{stage})".ljust(9)}   #{"'#{tag}'".ljust(27)} > #{"'#{r_tag}'".ljust(30)}"
+          #warn "i              --> rule: '#{rule}'"
+          r_tag
+        else
+          tag
+        end
+      end
+    end
+
+    def transform_and_stop(tag)
+      matched = false
+
+      t_tag = @tag_rules['transform'].inject(tag) do |tag,rule|
+        rxp = rule[0]
+        rxp = Regexp.new rule[0].to_s.gsub('%NAMESPACES%', @tag_rules['namespaces']) if rule[0].to_s.match?("%NAMESPACES%")
+        @log.debug "(transform) tag: '#{tag}', rule: '#{rule}'"
+        r_tag = tag
+
+        if rxp.match? tag
+          r_tag = tag.sub(rxp,rule[1])
+          warn "  (transform) #{"'#{tag}'".ljust(27)} > #{"'#{r_tag}'".ljust(30)}" unless r_tag == tag
+          matched = true
+          break(r_tag)
+        end
+        r_tag
+      end
+
+      return t_tag if matched
+      nil
+    end
+
+    def select(tag)
+      @tag_rules['select'].each do |label, rxp|
+        rxp = Regexp.new rxp.to_s.gsub('%NAMESPACES%', @tag_rules['namespaces']) if rxp.to_s.match?("%NAMESPACES%")
+        if rxp.match?(tag)
+          warn "  (select)    #{"'#{tag}'".ljust(27)} @  [ #{label} ]"
+          return tag
+        end
+      end
+      nil
     end
 
     def add(tags)
