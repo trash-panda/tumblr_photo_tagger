@@ -97,6 +97,7 @@ module TumblrScarper
 
       require 'cgi'
       data[:tag] = CGI.unescape(data[:tag]) if data[:tag]
+      @log.info "data:\n#{data.to_yaml}"
 
       data
     end

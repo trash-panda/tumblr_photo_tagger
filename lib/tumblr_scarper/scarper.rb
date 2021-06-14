@@ -49,7 +49,7 @@ module TumblrScarper
       offset = @options[:offset] || 0
       delay = @options[:delay] || 2
       args = target.dup.to_h.reject! { |k| k.to_s =~ /\A(blog)\Z/ }
-      args.merge!(limit: limit, offset: offset)
+      args.merge!(limit: limit, offset: offset) #, npf: true)
 
       cache_dir = @options[:target_cache_dirs][target]
 

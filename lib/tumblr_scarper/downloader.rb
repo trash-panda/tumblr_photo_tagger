@@ -196,6 +196,8 @@ module TumblrScarper
           @log.error "TAG: Tagging uncorrectably failed: '#{writer.errors}'\n\n\tfile: '#{file_path}'\n\tpost: '#{post[:url]}'\n\turl:  '#{url}'"
           if writer.errors.first =~ /^Warning: \[Minor\]/ # rubocop:disable Style/Semicolon, Lint/Debugger
             @log.verbose('  TAG: Continuing because this is a minor error')
+          elsif writer.errors.first =~ /Warning: Some character\(s\) could not be encoded in Latin/
+            @log.verbose("  TAG: Continuing because AFAICT, the characters are usually emoji and usually still work in captions")
           else
             @log.todo("This error isn't handled.  If pry is installed, investigate it")
             require 'pry'; binding.pry
