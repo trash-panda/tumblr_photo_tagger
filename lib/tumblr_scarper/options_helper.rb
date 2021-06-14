@@ -11,7 +11,7 @@ module TumblrScarper
 
     def default_logging
       # Default logger
-      Logging.init :debug, :verbose, :info, :happy, :warn, :success, :error, :recovery, :fatal
+      Logging.init :debug, :verbose, :info, :happy, :warn, :success, :todo, :error, :recovery, :fatal
 
       # here we setup a color scheme called 'bright'
       Logging.color_scheme(
@@ -23,6 +23,7 @@ module TumblrScarper
           happy: :magenta,
           warn: :yellow,
           success: :green,
+          todo: %i[black on_yellow],
           recovery: %i[black on_green],
           error: :red,
           fatal: %i[white on_red]
@@ -42,10 +43,16 @@ module TumblrScarper
 
       log = Logging.logger[TumblrScarper]
       log.add_appenders(
-        Logging.appenders.stdout,
-        Logging.appenders.file('tumblr_scaper_errors.log', level: :recovery),
-        Logging.appenders.file('tumblr_scaper_errors.log', level: :error),
-        Logging.appenders.file('tumblr_scaper_errors.log', level: :fatal)
+  Logging.appenders.stdout(
+    layout: Logging.layouts.pattern(color_scheme: 'bright')
+  ),
+  Logging.appenders.rolling_file(
+    "tumblr_scarper.debug.log",
+          keep: 3,
+    level: :debug,
+    layout: Logging.layouts.pattern(backtrace: true),
+    truncate: true
+  ),
       )
       log.level = :info
       log
