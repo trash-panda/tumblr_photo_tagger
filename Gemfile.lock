@@ -1,11 +1,11 @@
 PATH
   remote: .
   specs:
-    tumblr_scarper (0.2.0)
+    tumblr_scarper (0.3.0)
       logging (~> 2.2)
       multi_exiftool (~> 0.16.0)
-      nokogiri (~> 1.10.8)
-      oauth (~> 0.5)
+      nokogiri (>= 1.10.8, < 1.12.0)
+      oauth (~> 0.5.6)
       tumblr_client (~> 0.8)
 
 GEM
@@ -17,7 +17,7 @@ GEM
       multipart-post (>= 1.2, < 3)
     faraday_middleware (0.9.2)
       faraday (>= 0.7.4, < 0.10)
-    json (2.3.1)
+    json (2.5.1)
     little-plugger (1.1.4)
     logging (2.3.0)
       little-plugger (~> 1.1)
@@ -25,31 +25,31 @@ GEM
     method_source (1.0.0)
     mime-types (3.3.1)
       mime-types-data (~> 3.2015)
-    mime-types-data (3.2020.1104)
-    mini_portile2 (2.4.0)
+    mime-types-data (3.2021.0225)
     multi_exiftool (0.16.0)
     multi_json (1.15.0)
     multipart-post (2.1.1)
-    nokogiri (1.10.10)
-      mini_portile2 (~> 2.4.0)
-    oauth (0.5.4)
-    pry (0.13.1)
+    nokogiri (1.11.6-x86_64-linux)
+      racc (~> 1.4)
+    oauth (0.5.6)
+    pry (0.14.1)
       coderay (~> 1.1)
       method_source (~> 1.0)
-    rake (13.0.1)
+    racc (1.5.2)
+    rake (13.0.3)
     rspec (3.10.0)
       rspec-core (~> 3.10.0)
       rspec-expectations (~> 3.10.0)
       rspec-mocks (~> 3.10.0)
-    rspec-core (3.10.0)
+    rspec-core (3.10.1)
       rspec-support (~> 3.10.0)
-    rspec-expectations (3.10.0)
+    rspec-expectations (3.10.1)
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.10.0)
-    rspec-mocks (3.10.0)
+    rspec-mocks (3.10.2)
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.10.0)
-    rspec-support (3.10.0)
+    rspec-support (3.10.2)
     simple_oauth (0.3.1)
     tumblr_client (0.8.5)
       faraday (~> 0.9.0)
@@ -60,10 +60,10 @@ GEM
       simple_oauth
 
 PLATFORMS
-  ruby
+  x86_64-linux
 
 DEPENDENCIES
-  bundler (~> 1.16)
+  bundler (>= 2.2.10, < 3.0)
   pry
   rake (~> 13.0)
   rspec (~> 3.0)
@@ -71,4 +71,4 @@ DEPENDENCIES
   tumblr_scarper!
 
 BUNDLED WITH
-   1.17.3
+   2.2.17
