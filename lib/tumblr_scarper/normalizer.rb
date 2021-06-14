@@ -223,8 +223,15 @@ module TumblrScarper
       {
         :tags     => sanitize_tags(post['tags']),
         :slug     => post['slug'],
-        :title    => post['title'] || nil,
-        :caption  => post['caption'],
+        # Individual photoset photos can have titles (Tumblr calls them 'captions')
+        # NOTE: In our photo metadata, this will replace the post[:title] (if there was one)
+        :title    => photo['caption'] || post['title'] || nil,
+        # post type   field
+        # ---------   -------
+        # image       caption
+        # link        excerpt
+        # text        body (maybe also reblog.content?)
+        :caption  => post['caption'] || post['excerpt'] || post['body'] ||  nil,
         :url      => post['post_url'] || post['short_url'] || post['url'],
         :source_url  => post['source_url'] || nil,
         :link_url => post['link_url'] || nil,
@@ -255,27 +262,49 @@ module TumblrScarper
 
       unless post.fetch('photos',[]).empty?
         # multiple photos in a post
+        #
+        # Legacy Photo Posts
+        #
+        # Multi-photo Photo posts, called Photosets, will send return multiple photo objects in the photos array.
+        #
+        # https://www.tumblr.com/docs/en/api/v2#postspost-id---fetching-a-post-neue-post-format#legacy-photo-posts
+        photo_number = 1
         post['photos'].each do |photo|
-          url    = photo[photo_src_field]['url']
-          photos[url]           = photo_data(photo,post,photo_src_field)
+          url         = photo[photo_src_field]['url']
+          photos[url] = photo_data(photo,post,photo_src_field)
           if post['photos'].size > 1
+            # Some photos come with an 'offset'  TODO I haven't found this in the API docs yet
             uniq_suffix = photo['offset']
 
             unless uniq_suffix
               # https://66.media.tumblr.com/4fe728e4d964c122b4076fd53b3a3bab/tumblr_p6ecom4XE31tx7g3jo3_640.jpg
               #                                                                         this number -^^
+              # Update: The o3_ number doesn't seem to be in order of the photos:
+              #
+              #    https://lalunelaprune.tumblr.com/post/169899230724/sort-of-storyboard-im-working-on
+              #
               underscore_split = photo[photo_src_field]['url'].split('/')[-1].split('.')[-2].split('_')
-              post_hash = Digest::SHA256.hexdigest(post['id'].to_s)[0..6]
               u = underscore_split.shift
               u = underscore_split.shift if u == 'tumblr'
-              uniq_suffix = post_hash[0..6] + '-' + u[-2..-1].gsub(/^o/,'').rjust(2,'0')
+
+              # Use post hash (shorter, possibly more unique than  u[0..-3])
+              #post_hash = Digest::SHA256.hexdigest(post['id'].to_s)[0..6]
+              post_hash = Digest::SHA256.hexdigest(u[0..-3].to_s)[0..6] # shorter, maybe prevents duplicates from reposts
+
+              ### uniq_suffix = post_hash[0..6] + '-' + u[-2..-1].gsub(/^o/,'').rjust(2,'0')
+              ### uniq_suffix = u[0..-3] + '-' + photo_number.to_s.rjust(2,'0')
+              uniq_suffix = post_hash + '-' + photo_number.to_s.rjust(2,'0')
+              @log.warn("Add uniq_suffix: #{uniq_suffix} (photo_number: #{photo_number})")
             end
 
             unless uniq_suffix
-              # https://66.media.tumblr.com/eb4c868d4e41d4c5e60340aaecdb6fcb/f29b935efda044aa-02/s1280x1920/125b0ea7408312ff7737239683c94380fc6688b6.jpg
-              # https://66.media.tumblr.com/eb4c868d4e41d4c5e60340aaecdb6fcb/f29b935efda044aa-02/s2048x3072/f73bac1c3c33aca7562704b36ea408e9f47f3151.jpg
-              # https://66.media.tumblr.com/eb4c868d4e41d4c5e60340aaecdb6fcb/f29b935efda044aa-02/s1280x1920/125b0ea7408312ff7737239683c94380fc6688b6.jpg
-              # https://66.media.tumblr.com/eb4c868d4e41d4c5e60340aaecdb6fcb/f29b935efda044aa-02/s640x960/c36c8a908c2ca5f80a2976d675563725297e8762.jpg
+              # From https://salamispots.tumblr.com/post/190082704531:
+              #
+              #    https://66.media.tumblr.com/eb4c868d4e41d4c5e60340aaecdb6fcb/f29b935efda044aa-02/s1280x1920/125b0ea7408312ff7737239683c94380fc6688b6.jpg
+              #    https://66.media.tumblr.com/eb4c868d4e41d4c5e60340aaecdb6fcb/f29b935efda044aa-02/s2048x3072/f73bac1c3c33aca7562704b36ea408e9f47f3151.jpg
+              #    https://66.media.tumblr.com/eb4c868d4e41d4c5e60340aaecdb6fcb/f29b935efda044aa-02/s1280x1920/125b0ea7408312ff7737239683c94380fc6688b6.jpg
+              #    https://66.media.tumblr.com/eb4c868d4e41d4c5e60340aaecdb6fcb/f29b935efda044aa-02/s640x960/c36c8a908c2ca5f80a2976d675563725297e8762.jpg
+require 'pry'; binding.pry
               photoset_split = url.split('/')[-3]
               if photoset_split.scan('-').size == 1
                 uniq_suffix = photoset_split.split('-').first[0..6] + '-' + photoset_split.split('-')[-1].hex.to_s.rjust(3,'0')
@@ -283,6 +312,7 @@ module TumblrScarper
             end
 
             unless uniq_suffix
+require 'pry'; binding.pry
               # If we can't figure out any other way, just grab a snippet from the SHA256 of the URI
               require 'digest'
               uniq_suffix = Digest::SHA256.hexdigest(photo[photo_src_field]['url'])[0..7]
@@ -293,9 +323,8 @@ module TumblrScarper
             require 'pry'; binding.pry if photos[url][:local_filename] =~ /^--\d+/
           end
 
-          # Individual photoset photos can have titles (Tumblr calls them 'captions')
-          # NOTE: In our photo metadata, this will replace the post[:title] (if there was one)
-          photos[url][:title] = photo['caption'] unless  photo['caption'].empty?
+
+          photo_number += 1
         end
       else
         url = post[photo_src_field]
