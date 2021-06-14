@@ -220,29 +220,41 @@ module TumblrScarper
 
     # Return a photo data structure that can be used to download and tag a single image
     def photo_data(photo,post,photo_src_field)
-      {
+      post_title_excerpt_or_nil = [
+        post['title'],
+        post['excerpt'],
+      ].grep_v(NilClass).join("&xd;&xa;")
+      post_title_excerpt_or_nil = nil if post_title_excerpt_or_nil.to_s.empty?
+      photo_caption_or_nil = (photo['caption'].empty? ? nil : photo['caption'])
+
+      data = {
         :tags     => sanitize_tags(post['tags']),
         :slug     => post['slug'],
+
         # Individual photoset photos can have titles (Tumblr calls them 'captions')
         # NOTE: In our photo metadata, this will replace the post[:title] (if there was one)
-        :title    => photo['caption'] || post['title'] || nil,
-        # post type   field
+        :title    =>  photo_caption_or_nil || post_title_excerpt_or_nil || nil,
+
+        # legacy post type   field
         # ---------   -------
         # image       caption
-        # link        excerpt
+        # link        excerpt and/or description
         # text        body (maybe also reblog.content?)
-        :caption  => post['caption'] || post['excerpt'] || post['body'] ||  nil,
-        :url      => post['post_url'] || post['short_url'] || post['url'],
-        :source_url  => post['source_url'] || nil,
-        :link_url => post['link_url'] || nil,
-        :name     => post['blog_name'],
-        :id       => post['id'],
-        :date_gmt => post['date'],
-        :timestamp => post['timestamp'],
-        :format   => post['format'],
+        :caption    => post['caption'] || post['description'] || post['body'] || nil,
+        :url        => post['post_url'] || post['short_url'] || post['url'],
+        :source_url => post['source_url'] || nil,
+        :link_url   => post['link_url'] || nil,
+        :name       => post['blog_name'],
+        :id         => post['id'],
+        :date_gmt   => post['date'],
+        :timestamp  => post['timestamp'],
+        :format     => post['format'],
         :image_permalink => post['image_permalink'],
         :local_filename  => sanitize_slug(post),
       }
+
+      require 'pry'; binding.pry if post['type'] == 'photo' && data[:title] && !photo['caption']
+      data
     end
 
     # Returns photos from a post as a Hash
@@ -260,6 +272,11 @@ module TumblrScarper
       photos = { :skipped_posts => {} }  # special key for skipped (non-photo) posts
       photo_src_field = 'original_size'  # I think this is always 'original_size' now  # FIXME: sometimes panorama_size is present and better
 
+      post['excerpt'] = TumblrScarper::ContentHelpers.post_html_caption_to_markdown(post['excerpt']) if post['excerpt']
+      post['description'] = TumblrScarper::ContentHelpers.post_html_caption_to_markdown(post['description']) if post['description']
+      post['caption'] = TumblrScarper::ContentHelpers.post_html_caption_to_markdown(post['caption']) if post['caption']
+      post['body'] = TumblrScarper::ContentHelpers.post_html_caption_to_markdown(post['body']) if post['body']
+
       unless post.fetch('photos',[]).empty?
         # multiple photos in a post
         #
@@ -276,53 +293,62 @@ module TumblrScarper
             # Some photos come with an 'offset'  TODO I haven't found this in the API docs yet
             uniq_suffix = photo['offset']
 
+            # https://66.media.tumblr.com/4fe728e4d964c122b4076fd53b3a3bab/tumblr_p6ecom4XE31tx7g3jo3_640.jpg
+            #                                                                         this number -^^
+            # Update: The o3_ number doesn't seem to be in order of the photos:
+            #
+            #    https://lalunelaprune.tumblr.com/post/169899230724/sort-of-storyboard-im-working-on
+            #
             unless uniq_suffix
-              # https://66.media.tumblr.com/4fe728e4d964c122b4076fd53b3a3bab/tumblr_p6ecom4XE31tx7g3jo3_640.jpg
-              #                                                                         this number -^^
-              # Update: The o3_ number doesn't seem to be in order of the photos:
-              #
-              #    https://lalunelaprune.tumblr.com/post/169899230724/sort-of-storyboard-im-working-on
-              #
-              underscore_split = photo[photo_src_field]['url'].split('/')[-1].split('.')[-2].split('_')
-              u = underscore_split.shift
-              u = underscore_split.shift if u == 'tumblr'
-
-              # Use post hash (shorter, possibly more unique than  u[0..-3])
-              #post_hash = Digest::SHA256.hexdigest(post['id'].to_s)[0..6]
-              post_hash = Digest::SHA256.hexdigest(u[0..-3].to_s)[0..6] # shorter, maybe prevents duplicates from reposts
-
-              ### uniq_suffix = post_hash[0..6] + '-' + u[-2..-1].gsub(/^o/,'').rjust(2,'0')
-              ### uniq_suffix = u[0..-3] + '-' + photo_number.to_s.rjust(2,'0')
-              uniq_suffix = post_hash + '-' + photo_number.to_s.rjust(2,'0')
-              @log.warn("Add uniq_suffix: #{uniq_suffix} (photo_number: #{photo_number})")
+              photo[photo_src_field]['url'].split('/').last.match( /\A.+o\d+_\d+\.[a-z]+\Z/ ) do |m|
+                underscore_split = photo[photo_src_field]['url'].split('/')[-1].split('.')[-2].split('_')
+                u = underscore_split.shift
+                u = underscore_split.shift if u == 'tumblr' # when is this needed?
+                post_hash = Digest::SHA256.hexdigest(u[0..-3].to_s)[0..6] # shorter, maybe prevents duplicates from reposts
+                uniq_suffix = post_hash + '-' + photo_number.to_s.rjust(2,'0')
+              end
             end
 
+            # photoset_layout - an undocumented key from the lagacy API's photo posts
+            #
+            #   https://ortiies.tumblr.com/post/612870791583940608/past-6pm-cryptid-hunter-shift-is-over-and-this
+            #
+            #  post['photos'][n]['original_size']['url']
+            #
+            #    n=0 "https://64.media.tumblr.com/9b109de07d672f851143df0297e02b87/0155a58231e03725-09/s1280x1920/5383eccd6821a7e6983f6280cde6454a96dd7ae6.jpg"
+            #    n=1 "https://64.media.tumblr.com/3e483e75fc80fb5a0c6084f1f1f2fe3a/0155a58231e03725-e9/s1280x1920/9648b4d5e8220a0f9f35c73e9c5b8fe62c811580.jpg"
+            #    n=2 "https://64.media.tumblr.com/0eb2083480837348dc0c5f715b8545b9/0155a58231e03725-fe/s1280x1920/60f6964a368dd5c3eec2f761d5eef813a6733abd.jpg"
+            #    n=3 "https://64.media.tumblr.com/55cf1bde69221db56482884d3e39b56c/0155a58231e03725-ef/s1280x1920/6548c7fe8a36ea83c9215ab17c1f6ccc56a0804f.png"
+            #    n=4 "https://64.media.tumblr.com/3c31f0fc390886efd3cd0eda6f37f6d4/0155a58231e03725-c1/s1280x1920/6cfa3e3c6c211608d1d1eef0400e52cce900111b.jpg"
+            #
+            #  u = "5383eccd6821a7e6983f6280cde6454a96dd7ae6" # 01
+            #  sha1 = "6ff43a9-01"
+            #
             unless uniq_suffix
-              # From https://salamispots.tumblr.com/post/190082704531:
-              #
-              #    https://66.media.tumblr.com/eb4c868d4e41d4c5e60340aaecdb6fcb/f29b935efda044aa-02/s1280x1920/125b0ea7408312ff7737239683c94380fc6688b6.jpg
-              #    https://66.media.tumblr.com/eb4c868d4e41d4c5e60340aaecdb6fcb/f29b935efda044aa-02/s2048x3072/f73bac1c3c33aca7562704b36ea408e9f47f3151.jpg
-              #    https://66.media.tumblr.com/eb4c868d4e41d4c5e60340aaecdb6fcb/f29b935efda044aa-02/s1280x1920/125b0ea7408312ff7737239683c94380fc6688b6.jpg
-              #    https://66.media.tumblr.com/eb4c868d4e41d4c5e60340aaecdb6fcb/f29b935efda044aa-02/s640x960/c36c8a908c2ca5f80a2976d675563725297e8762.jpg
-require 'pry'; binding.pry
-              photoset_split = url.split('/')[-3]
-              if photoset_split.scan('-').size == 1
-                uniq_suffix = photoset_split.split('-').first[0..6] + '-' + photoset_split.split('-')[-1].hex.to_s.rjust(3,'0')
+              regex_patt = %r[\A(?<str>.+/(?<uniq_str>\h+)-(?<hex_order>\h+)/s\d+x\d+/\h+\.[a-z]+)\Z]
+              photo[photo_src_field]['url'].match( regex_patt ) do |m|
+                post_hash = m[:uniq_str][0..6]
+                urls = post['photos'].map{|x| x['original_size']['url'] }
+                order_list = []
+                post['photoset_layout'].scan(/\d/) do |x|
+                  w = x.to_i
+                  u_slice = urls.slice(order_list.size,w).sort_by{|u| u.match(regex_patt){|mm| mm[:hex_order] }}.sort_by(&:hex)
+                  order_list += u_slice
+                end
+                photo_order_number = order_list.index(m[:str])+1
+                uniq_suffix = post_hash + '-' + photo_order_number.to_s.rjust(2,'0')
               end
             end
 
             unless uniq_suffix
-require 'pry'; binding.pry
-              # If we can't figure out any other way, just grab a snippet from the SHA256 of the URI
-              require 'digest'
-              uniq_suffix = Digest::SHA256.hexdigest(photo[photo_src_field]['url'])[0..7]
-              @log.error("URL not unique until Digest::256:   #{url}")
+              @log.error "No appropriate URL pattern found to determine uniq_suffix for photoset! (investigate with pry)"
+              require 'pry'; binding.pry
             end
 
+            @log.warn("Add uniq_suffix: #{uniq_suffix} (photo_number: #{photo_number})")
             photos[url][:local_filename] = sanitize_slug(post, uniq_suffix)
             require 'pry'; binding.pry if photos[url][:local_filename] =~ /^--\d+/
           end
-
 
           photo_number += 1
         end
