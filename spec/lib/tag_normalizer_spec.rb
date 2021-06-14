@@ -54,6 +54,7 @@ RSpec.describe TumblrScarper::TagNormalizer do
         ---
         - general
         - namespaces
+        - photography
         - art
         - years
         #- anatomy
