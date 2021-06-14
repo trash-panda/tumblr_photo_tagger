@@ -42,8 +42,8 @@ module TumblrScarper
       end
     end
 
-    # ----------------------------------------
-      # Prepare Tag Data
+      # ----------------------------------------
+      # Prepare Tag Data for exiftool
       # ----------------------------------------
       #
       # ## Metadata conventions:
@@ -71,7 +71,20 @@ module TumblrScarper
       # xmp-mwg-coll:Collections
     def prepare_tag_data(url, post)
       post_datetime = DateTime.parse(post[:date_gmt])
+      if post[:caption].nil?
+        @log.todo "Somehow `post[:caption]` is nil; investigate why!"
+        require 'pry'; binding.pry
+      end
+
       caption = TumblrScarper::ContentHelpers.post_html_caption_to_markdown(post[:caption])
+
+      unless post[:tags].empty?
+        tagline = post[:tags].map{|x| x.sub(/^/,'#')}.join(', ')
+        tagline = "Tags: #{tagline}"
+        tagline = "\n\n---\n#{tagline}" unless caption.empty?
+        caption += tagline.gsub("\n", '&#xd;&#xa;')
+      end
+
       @log.verbose caption.gsub('&#xd;&#xa;', "\n")
 
       writer_values = {
@@ -85,6 +98,7 @@ module TumblrScarper
         'xmp-mwg-coll:Collections' => [],
         'MWG:CreateDate'           => post_datetime,
         'XMP-tumblr:TumblrTags'    => post[:tags],
+        #'iptc:codedcharacterset'   => 'utf8',
         #'xmp:createdate'             => post_datetime,
       }
 
@@ -180,7 +194,12 @@ module TumblrScarper
 
         unless result
           @log.error "TAG: Tagging uncorrectably failed: '#{writer.errors}'\n\n\tfile: '#{file_path}'\n\tpost: '#{post[:url]}'\n\turl:  '#{url}'"
-          require 'pry'; binding.pry unless writer.errors.first =~ /^Warning: \[Minor\]/ # rubocop:disable Style/Semicolon, Lint/Debugger
+          if writer.errors.first =~ /^Warning: \[Minor\]/ # rubocop:disable Style/Semicolon, Lint/Debugger
+            @log.verbose('  TAG: Continuing because this is a minor error')
+          else
+            @log.todo("This error isn't handled.  If pry is installed, investigate it")
+            require 'pry'; binding.pry
+          end
         end
       end
 
