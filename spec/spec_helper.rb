@@ -4,6 +4,14 @@ require 'fileutils'
 
 TMP_DIR = 'tmp'
 
+require 'logging'
+require 'ostruct'
+DEFAULT_OPTIONS = OpenStruct.new(
+  log: Logging.logger[self.class],
+  dl_root_dir: TMP_DIR,
+  cache_root_dir: TMP_DIR
+)
+
 RSpec.configure do |config|
   include FileUtils::Verbose
   mkdir_p TMP_DIR
