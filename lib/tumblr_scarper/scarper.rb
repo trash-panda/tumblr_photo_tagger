@@ -43,6 +43,7 @@ module TumblrScarper
       File.open(api_cache_file, 'w') { |f| f.puts JSON.pretty_generate(data) }
     end
 
+
     def scarp(target) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/AbcSize, Metrics/PerceivedComplexity
       blog = target[:blog]
       limit = @options[:batch_size]
@@ -83,12 +84,15 @@ module TumblrScarper
 
         unless File.file? cache_file
           results = @client.posts(blog, args.merge(limit: limit, offset: offset)) if posts
+          write_raw_api_result_cache(results, cache_dir, cache_name, cache_label) if @options[:cache_raw_api_results]
+
           posts = results['posts']
+
+          # TODO Is the case for this pry still relevant?
           require 'pry'; binding.pry unless posts.size # rubocop:disable Style/Semicolon, Lint/Debugger
           actual_post_count += posts.size
           File.open(cache_file, 'w') { |f| f.puts JSON.pretty_generate(posts) }
           @log.success "SCARP: == cached #{cache_label} posts: #{posts.size} count: #{actual_post_count}"
-          write_raw_api_result_cache(results, cache_dir, cache_name, cache_label) if @options[:cache_raw_api_results]
 
           sleep delay
         else
