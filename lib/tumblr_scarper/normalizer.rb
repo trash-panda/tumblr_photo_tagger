@@ -13,40 +13,6 @@ module TumblrScarper
       @options = options || {}
     end
 
-    # TODO: read these from file?
-    TAG_SUBS = {
-      /^(\d\d\d\d)'s?$/ => 'decade/\1s',
-      /^(\d\d\d\d)$/ => 'year/\1',
-      /^(\d\dth) century$/i => 'century/\1',
-      /^(Romantic Era)$/i => 'era:romantic',
-      /^(cashmere shawl)$/i => 'shawl',
-      /^court( (dress|gown))?$/i => 'dress:court dress',
-      /^(colonies)$/i => 'colonial',
-
-      /^(historical|librarian|medieval) fashion$/i => 'fashion:\1',
-      /^(Extant garments|feathers|regency|shawl|waistcoat|undergarments|underwear|uniform|robe|fancy dress|neoclassical|couture|belle epoque|baroque|Directoire|Empire|colonial|georgian|edwardian|victorian)$/i => 'fashion:\1',
-      /^(shirtdress)$/i => 'shirt dress',
-      /^(dres)$/i => 'dress',
-      /^(bow|bows)$/i => 'fashion:bows',
-      /^(spencer)$/i => 'spencer jacket',
-      /^(spencer jacket|tailcoat)$/i => 'coat:\1',
-      /^wedding (dress|gown)$/i => 'dress:wedding',
-      /^george s\.? stuart$/i => 'George S. Stuart',
-      /^sire /i => 'Sir ',
-      /^(go;d)$/i => 'gold',
-      /^(walking dress|hoop skirt|gown|dinner dress|court dress|court train|ball gown|morning dress|evening dress|evening dres)$/i => 'dress:\1',
-      /^(ballet slippers|slippers)$/ => 'shoes:\1',
-      /^(bonnet)$/i => 'hat:\1',
-      /^(pompadour)$/i => 'hair:\1',
-      /^h. thomson/ => 'artist/Hugh Thomson',
-      /^sktech$/ => 'sketch',
-    }
-
-    DELETE_TAGS = [
-      'Abigail', 'Adams', 'Dolley', 'Madison', 'Jensen', 'Lefevre', 'bois de boulogne', 'caroline', 'on a clear day you can see forever', 'mrs james frasier', 'merry-joseph blondel' ,
-      'simon', 'raeburn', "Christie's", 'doucet',
-    ].map(&:downcase)
-
     SLUG_SUBS = {
       /-posted-a-picture-to-the-patreon(-full-size)?/ => '',
     }
@@ -190,11 +156,28 @@ module TumblrScarper
     end
 
     # if tags_whitelist is not empty, all other tags are removed
-    def sanitize_tags(tags)
-      tags.each { |tag| TAG_SUBS.each { |k,v| tag.gsub!(k,v) } }
-      tags.delete_if{|x| tags_blacklist.include?(x.downcase) }
-      tags.delete_if{|x| !tags_whitelist.include?(x.downcase) } unless tags_whitelist.empty?
+    def sanitize_tags(orig_tags)
+      tags = orig_tags.dup
+
+      # This is now down at download time, with the TagNormalizer
       tags.map!(&:downcase) if @options['lowercase_tags']
+
+      # NOTE SANITIZE
+      # Very rarely posts, API can return posts with \n or \r in their tags
+      # ex: https://allmesopotamia.tumblr.com/post/129128529693/rare-sumerian-chariot-figurine-3rd-2nd-ml-bc-a
+      # These look like mistakes, where each line should be a tag
+      # FIXME FIXME FIXME
+      nlcr_tags = tags.select{|x| x=~ /\r|\n/ }
+      unless nlcr_tags.empty?
+        @log.error("tags contains newlines: #{nlcr_tags.to_yaml}")
+        nlcr_tags.each do |nlcr_tag|
+          idx = tags.index nlcr_tag
+          tags.delete_at idx
+          tags.insert idx, *nlcr_tag.split(/[\n\r]+/)
+        end
+        @log.recovery("corrected nlcr tags:\nOLD TAGS: #{orig_tags.to_yaml}\nNEW TAGS: #{tags.to_yaml}")
+      end
+
       tags.sort.uniq
     end
 
@@ -293,17 +276,24 @@ module TumblrScarper
             # Some photos come with an 'offset'  TODO I haven't found this in the API docs yet
             uniq_suffix = photo['offset']
 
+            # https://64.media.tumblr.com/8ad04281bc48f2ff9ee06c4fba9f788d/tumblr_nz7qqvn7Ie1sg29ano2_r1_1280.jpg
+            #                                                                                      ^^ ^^
+            #
             # https://66.media.tumblr.com/4fe728e4d964c122b4076fd53b3a3bab/tumblr_p6ecom4XE31tx7g3jo3_640.jpg
             #                                                                         this number -^^
             # Update: The o3_ number doesn't seem to be in order of the photos:
             #
             #    https://lalunelaprune.tumblr.com/post/169899230724/sort-of-storyboard-im-working-on
             #
+            # o2_r1 variant:
+            #    https://allmesopotamia.tumblr.com/post/645877347092971520/i-saw-this-exercise-completed-in-latin-found
+            #
+            #
             unless uniq_suffix
-              photo[photo_src_field]['url'].split('/').last.match( /\A.+o\d+_\d+\.[a-z]+\Z/ ) do |m|
+              photo[photo_src_field]['url'].split('/').last.match( /\A.+o\d+_(?:r\d+_)?\d+\.[a-z]+\Z/ ) do |m|
                 underscore_split = photo[photo_src_field]['url'].split('/')[-1].split('.')[-2].split('_')
                 u = underscore_split.shift
-                u = underscore_split.shift if u == 'tumblr' # when is this needed?
+                u = underscore_split.shift if u == 'tumblr' # Q: when is this needed? (A: see _r1 example above)
                 post_hash = Digest::SHA256.hexdigest(u[0..-3].to_s)[0..6] # shorter, maybe prevents duplicates from reposts
                 uniq_suffix = post_hash + '-' + photo_number.to_s.rjust(2,'0')
               end
