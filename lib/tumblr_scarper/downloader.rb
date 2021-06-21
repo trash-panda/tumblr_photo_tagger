@@ -4,6 +4,7 @@ require 'multi_exiftool'
 require 'fileutils'
 require 'date'
 require 'tumblr_scarper/content_helpers'
+require 'tumblr_scarper/tag_normalizer'
 
 module TumblrScarper
   class Downloader
@@ -15,6 +16,8 @@ module TumblrScarper
       }
       @options = options
       @log = options.log
+      @tag_rules = options.tag_rules
+      @tag_normalizer = TumblrScarper::TagNormalizer.new(tag_rules: @tag_rules, log: @log)
     end
 
     def normalized_photo_metadata cache_path
@@ -79,13 +82,13 @@ module TumblrScarper
       caption = TumblrScarper::ContentHelpers.post_html_caption_to_markdown(post[:caption])
 
       unless post[:tags].empty?
-        tagline = post[:tags].map{|x| x.sub(/^/,'#')}.join(', ')
-        tagline = "Tags: #{tagline}"
-        tagline = "\n\n---\n#{tagline}" unless caption.empty?
-        caption += tagline.gsub("\n", '&#xd;&#xa;')
+        caption =  TumblrScarper::ContentHelpers.to_exiftool_newlines(
+          TumblrScarper::ContentHelpers.taglined_caption(tags: post[:tags], caption: caption)
+        )
       end
 
       @log.verbose caption.gsub('&#xd;&#xa;', "\n")
+      new_mwg_kewords = @tag_normalizer.normalize(post[:tags])
 
       writer_values = {
         'MWG:description'          => caption, # sets 'exif:imagedescription'
@@ -94,7 +97,7 @@ module TumblrScarper
         'xmp-dc:relation'          => [post[:url], post[:image_permalink]], # [dlf-1]
         'xmp-photoshop:source'     => url,                                  # displayed by DigiKam
         'xmp-photoshop:credit'     => post[:url],                           # displayed by DigiKam
-        'MWG:Keywords'             => post[:tags], # sets 'xmp:subject'
+        'MWG:Keywords'             => new_mwg_kewords,
         'xmp-mwg-coll:Collections' => [],
         'MWG:CreateDate'           => post_datetime,
         'XMP-tumblr:TumblrTags'    => post[:tags],
@@ -194,7 +197,7 @@ module TumblrScarper
 
         unless result
           @log.error "TAG: Tagging uncorrectably failed: '#{writer.errors}'\n\n\tfile: '#{file_path}'\n\tpost: '#{post[:url]}'\n\turl:  '#{url}'"
-          if writer.errors.first =~ /^Warning: \[Minor\]/ # rubocop:disable Style/Semicolon, Lint/Debugger
+          if writer.errors.first =~ /^Warning: \[Minor\]/i # rubocop:disable Style/Semicolon, Lint/Debugger
             @log.verbose('  TAG: Continuing because this is a minor error')
           elsif writer.errors.first =~ /Warning: Some character\(s\) could not be encoded in Latin/
             @log.verbose("  TAG: Continuing because AFAICT, the characters are usually emoji and usually still work in captions")
