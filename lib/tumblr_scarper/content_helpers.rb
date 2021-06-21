@@ -8,6 +8,20 @@ module TumblrScarper
       html.css('img')
     end
 
+    # Generate suffix
+    def self.taglined_caption(tags:, caption:)
+      caption = caption.sub(/[\r\n]{2}---[\r\n]+Tags:.*\Z/m, '')
+      caption = caption.gsub(/\r\n|\n|\r/, "\n")
+      tagline = tags.map{|x| x.sub(/^/,'#')}.join(', ')
+      tagline = "Tags: #{tagline}"
+      tagline = "\n\n---\n#{tagline}" unless caption.empty?
+      [caption.to_s.rstrip,tagline].join
+    end
+
+    def self.to_exiftool_newlines(str)
+      str.gsub(/\r\n|\n|\r/,'&#xd;&#xa;')
+    end
+
     # Converts html into simplistic markdown
     def self.post_html_caption_to_markdown(str)
       log = Logging.logger[TumblrScarper] # FIXME
@@ -66,9 +80,7 @@ module TumblrScarper
       caption.chomp!
 
       # Replacing "\n" with '&#xd;&#xa;' allows line breaks on windows:
-      caption.gsub!("\n",'&#xd;&#xa;')
-
-      caption
+      to_exiftool_newlines(caption)
     end
   end
 end

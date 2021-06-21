@@ -55,6 +55,7 @@ module TumblrScarper
         opts.on('-1', '--[no-]scarp',     '[step 1] Scarp API data') { |v| @options[:pipeline][:scarp] = v }
         opts.on('-2', '--[no-]normalize', '[step 2] Normalize metadata') { |v| @options[:pipeline][:normalize] = v }
         opts.on('-3', '--[no-]download',  '[step 3] Download + tag images') { |v| @options[:pipeline][:download] = v }
+        opts.on('-R', '--retag',  '[no steps] Re-trag image file based on their tags') { |v| @options[:retag] = v }
 
         opts.separator "\nStep-specific options:\n"
         opts.on('-a', '--[no-]cache-raw-api-results', 'Cache raw API scarper results (used for testing)') do |v|
@@ -64,59 +65,53 @@ module TumblrScarper
         opts.on('-t', '--[no-]tag-on-skipped-dl', 'Skipping a download skips the tag, too') do |v|
           @options[:tag_on_skipped_dl] = v
         end
+
+        opts.on('-r', '--tag-rules-file FILE', "YAML file of tag rules (default: '#{@options.default_tag_rules_file}')") do |file|
+          @options[:tag_rules_file]
+        end
       end.parse!
 
       # If no specific steps were selected, turn on the entire pipeline
       @options.pipeline.keys.each { |k| @options.pipeline[k] = true } if @options.pipeline.values.all? { |v| v == false }
+      # If retag is active, disable the rest of the pipeline
+      @options.pipeline.keys.each { |k| @options.pipeline[k] = false } if @options[:retag]
 
-      targets = args.map { |arg| blog_data_from_arg(arg) }
-      @options = set_up_target_options(@options, targets)
+      tag_rules_file = @options.tag_rules_file ||  @options.default_tag_rules_file
+      @options[:tag_rules] = YAML.load_file(tag_rules_file)
+      @log.error("tag_rules are EMPTY (loaded from '#{tag_rules_file}')") if @options[:tag_rules].to_h.empty?
+
+      @options = set_up_target_options(@options, args)
       args
     end
 
-    # Returns :blog frm arg, which can be a blog name or tumblr post uri
-    def blog_data_from_arg(arg) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/AbcSize, Metrics/PerceivedComplexity
-      data = {}
-      case arg
-      when %r{^(https?://)?[a-z0-9_-]+\.tumblr.[a-z]+}
-        uri_parts = arg.sub(%r{^https?://}, '').split('/')
-        uri_parts.delete_at(1) if uri_parts[1] == 'archive'
-        data[:id] = uri_parts[2] if uri_parts[1] == 'post'
-        data[:tag] = uri_parts[2] if uri_parts[1] == 'tagged'
-        data[:blog] = uri_parts.first.split('.').first
-      when /^[a-z0-9_-]+$/
-        data[:blog] = arg
-      when %r{^https?://([a-z0-9_.-]+)/}
-        data[:blog] = Regexp.last_match(1)
-        uri_parts = arg.sub(%r{^https?://}, '').split('/')
-        data[:id] = uri_parts[2] if uri_parts[1] == 'post'
-        data[:tag] = uri_parts[2] if uri_parts[1] == 'tagged'
-      else
-        @log.fatal "Cannot determine blog name from '#{arg}'!"
-      end
-
-      require 'cgi'
-      data[:tag] = CGI.unescape(data[:tag]) if data[:tag]
-      @log.info "data:\n#{data.to_yaml}"
-
-      data
-    end
 
     def start(argv) # rubocop:disable Metrics/AbcSize
       args = parse_args(argv)
       raise("No blog targets found in args: #{args.join(', ')}") unless @options[:targets]
 
       @log.debug("@options: #{@options.to_h.reject { |x| %i[log target_cache_dirs target_dl_dirs].include?(x) }.to_yaml}")
-      @log.verbose("Targets to process: #{@options[:targets].join(', ')}")
+      if @options[:retag]
+        @log.info("Retagging downloaded images base on tag data...")
+        retag_images
+      else
+        @log.info("Running pipeline...")
+        @log.verbose("Targets to process: #{@options[:targets].join(', ')}")
 
-      @options[:pipeline][:scarp]     ? scarp     : @log.info('---- SKIPPED SCARP pipeline step (use -1)')
-      @options[:pipeline][:normalize] ? normalize : @log.info('---- SKIPPED NORMALIZE pipeline step (use -2)')
-      @options[:pipeline][:download]  ? download  : @log.info('---- SKIPPED DOWNLOAD pipeline step (user -3)')
+        @options[:pipeline][:scarp]     ? scarp     : @log.info('---- SKIPPED SCARP pipeline step (use -1)')
+        @options[:pipeline][:normalize] ? normalize : @log.info('---- SKIPPED NORMALIZE pipeline step (use -2)')
+        @options[:pipeline][:download]  ? download  : @log.info('---- SKIPPED DOWNLOAD pipeline step (user -3)')
+      end
 
       @log.success('FINIS!')
     end
 
     # -----
+    def retag_images
+      require_relative 'retag_images'
+      paths = @options.targets.empty? ? [ @options.dl_root_dir ] : @options.targets
+      @retagger = TumblrScarper::RetagImages.new @options
+      @retagger.retag_paths(paths)
+    end
 
     def scarp
       require_relative 'scarper'
