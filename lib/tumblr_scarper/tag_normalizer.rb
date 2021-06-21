@@ -23,7 +23,7 @@ module TumblrScarper
         paired_results[tag] = ''
         next(nil) if reject?(tag)
         r_tag = correct(tag.downcase)
-        r_tag = correct(r_tag.downcase,stage: 'ns')
+        r_tag = correct(r_tag.downcase, stage: 'ns')
         r_tag = transform_and_stop(r_tag) || select(r_tag)
         next(nil) unless r_tag
         #tags = add(tags)

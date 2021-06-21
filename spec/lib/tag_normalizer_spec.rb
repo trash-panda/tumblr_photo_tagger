@@ -54,17 +54,17 @@ RSpec.describe TumblrScarper::TagNormalizer do
         ---
         - general
         - namespaces
-        - photography
+        ##- photography
         - art
-        - years
-        #- anatomy
-        #- fashion
+        ##- years
+        - anatomy
+        - fashion
         #- inktober
         #- spx
         #- figurines
         #- history
         #- other design
-        #- hair
+        - hair
         #- character design
         YAML
         match = active_input_sets.include? x

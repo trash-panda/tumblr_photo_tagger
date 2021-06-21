@@ -1,17 +1,18 @@
 ---
 tag_rules:
-  namespaces: "animals|archaeology|architecture|arms|hands|head|art|torso|costume|dress|fashion|folklore|god|goddess|hair|history|mythology|photography|shoes|torso|view|century|SPX|year|century|decade|looking|eyes|mouth"
+  namespaces: "demographic|complexion|action|animals|archaeology|architecture|arms|hands|head|art|torso|clothing|costume|dress|fashion|folklore|god|goddess|hair|history|mythology|photography|shoes|torso|view|century|SPX|year|century|decade|looking|eyes|mouth|museums"
   reject:
     # filter out obvious garbage tags
     # NOTE: can't auto-reject 'of' or 'the' ('animal of the day', 'outfit of the week')
     - !ruby/regexp /\A.*\b(you(r|'?re|'?d|'?ve|ll)|is|it's|its|his|her|their|so+|too|we('d|'ve|'re)?|was|to|had|i('m|'d|'ve)?|am|have|not|im|sorry|a|whatever|oops|has|in|ugh|yeah|sry|if|uh|pls|but|got|fuck|because|when|why|though|me+|[oa]h+)\b.*/i
     - !ruby/regexp /\?|\!|\(|\)|\[|\]|\;|\.\.\.|\,/
     - dragon age
+    - !ruby/regexp / years of /
     - !ruby/regexp /\A(buy|op|semi vent|frens|nostalgia|sw|birthday|food|stylized|ocean|adventure time fan|guest|spam|vent|romana) art\Z/i
     - !ruby/regexp /\A.*\b(batman|kylo|sw art|yay)\b.*/i
     # Most of these words will be corrected later on into simpler categories
     - !ruby/regexp /\A(?~landscape|wildlife|animal|plant|nature|natural|underwater|reference|street|fashion|candid|people|color|vintage|early) photography\Z.*/i
-    - !ruby/regexp /\A(?~ancient?|roman|greek|etruscan|production|traditional|fan|concept?|paleolithic|neolithic|mesolithic|prehistoric|cave|rock|lint|character|game|digital)\s+art\Z/i
+    - !ruby/regexp /\A(?~ancient?|roman|greek|etruscan|production|traditional|fan|concept?|paleolithic|neolithic|mesolithic|prehistoric|cave|rock|lint|character|game|my|digital)\s+art\Z/i
   correct:
     # translate mis-spellings
     !ruby/regexp /\bgodd?ess?(?:es)?\Z/i: goddess
@@ -24,7 +25,9 @@ tag_rules:
     comic pages: comics
     purlehair: purple hair
     lanscape: landscape
+    !ruby/regexp /\A(how ?tos?|tutorials?|process)\Z/i: process
     !ruby/regexp /\bancien\b/i: ancient
+    !ruby/regexp /\Adance\Z/i: dancing
     !ruby/regexp /\barcheology\b/i: archaeology
     !ruby/regexp /\bstevenuniverse\b/i: steven universe
     !ruby/regexp /\bafrican american\b/i: african-american
@@ -34,36 +37,48 @@ tag_rules:
     !ruby/regexp /\benviroment\b/i: environment
     !ruby/regexp /\bconcep\b/i: concept
     # ensure singular
-    !ruby/regexp /\A(?<word>webcomic|OC|prop|background|forest|tree|plant|flower|stone|rock|fossil|mineral|crystal|bird|turtle|shark|romper|gown)s\Z/i: '\k<word>'
+    !ruby/regexp /\A(?<word>webcomic|OC|prop|background|gesture|pose|forest|tree|plant|flower|stone|rock|fossil|mineral|crystal|bird|turtle|shark|romper|gown)s\Z/i: '\k<word>'
     !ruby/regexp /\A(?<word>sketch|fish|dress)es\Z/i: '\k<word>'
-    !ruby/regexp /\b(?<word>comic|design|painting)s\Z/i: '\k<word>'
+    !ruby/regexp /\b(?<word>comic|illustration|design|painting)s\Z/i: '\k<word>'
     # ensure plural
     !ruby/regexp /\A(?<word>ruin|shoe|sock|sport|slipper)\Z/i: '\k<word>s'
     !ruby/regexp /\A(?<word>glove)\Z/i: '\k<word>es'
     # ensure consistency
-    !ruby/regexp /\bphoto\Z/i: photography
+    !ruby/regexp /\bphoto\Z/i: photograph
     !ruby/regexp /\bstatuette\b/i: figurine  # I guess these are the same...
-    !ruby/regexp /\A(early)\s+photography\Z/i: 'vintage photography'
+    !ruby/regexp /\A(early|antique|vintage)\s+(photography|photos?)\Z/i: 'vintage photography'
     !ruby/regexp /\A(wildlife|animal|plant|nature|natural)\s+photography\Z/i: 'nature photography'
-    !ruby/regexp /\Aart\s+(?<word>tutorial|advice|processe?|tip)s?\Z/: 'art/art:process'
+    !ruby/regexp /\Aart\s+(?<word>tutorial|advice|processe?|tip)s?\Z/: 'art/process'
     !ruby/regexp /^(cashmere shawl)$/i: shawl
+    !ruby/regexp /\Afigure ?(drawing reference|painting|poses?|models?|sculpting)?\Z/i: figure
+    !ruby/regexp /\A(?<word>female|male) ?(?<thing>model)s?\Z/i: '\k<word>'
+    !ruby/regexp /\A(figure .*photo(s|ref|graphy)?)\Z/i: photoref
+    !ruby/regexp /\A(pose reference)\Z/i: pose
+    !ruby/regexp /\A(black ?and ?white|blackandwhite|black ?& ?white) ?(photography?)?\Z/i: 'black & white'
+    !ruby/regexp /\Ablack ?(is ?beautiful|m[ae]n|girl|wom[ae]n|fashion|models)/i: 'demographic/ic3'
     !ruby/regexp /\A(charadesign|chara design|charcter design|character design challenge|character-design|character designer|chacterdesign)\Z/i: character design
     !ruby/regexp /^(dres)$/i: dress
-    !ruby/regexp /^(spencer jacket|tailcoat)$/i: coat:\1
+#    !ruby/regexp /^(spencer jacket|tailcoat|greatcoat|trenchcoat)$/i: coat:\1
     !ruby/regexp /^wedding (dress|gown)$/i: dress:wedding
     !ruby/regexp /^court( (dress|gown))?$/i: dress:court dress
     !ruby/regexp /^(bonnet)$/i: hat:\1
     !ruby/regexp /^(pompadour)$/i: hair:\1
     !ruby/regexp /^(go;d)$/i: gold
     !ruby/regexp /^(Romantic Era)$/i: era:romantic
-    !ruby/regexp /\+zz\Z/: '' # remove suffix added by old jq tests
+    !ruby/regexp /\+(zz|yy)\Z/: '' # remove suffix added by old jq tests
     !ruby/regexp /\b(especially\s+)/: '' # remove superlatives from otherwise useful tags
     !ruby/regexp /\b([a-z]+)design\Z/: '\1 design'
+    # split <ns>:<word> string back into '<word> <ns>'
+    !ruby/regexp /\A(?<ns>mythology|photography|costume|history|fashion|coat|clothing):(?<word>[^/:]+)\Z/i: '\k<word> \k<ns>'
+    !ruby/regexp /\A(?:[^:/]*?|fashion/)\b(?<thing>shirt|shawl|scarf|jeans|hijab|waistcoat|robe|pants|menswear|tuxedo|sweater|blazer|underwear|socks|stockings|(?:\w+\s)?(?:uniform|jacket|coat|suit))\Z/i: 'clothing/\k<thing>'
+    !ruby/regexp /\A[^:/]*\b(?<thing>haute couture|fashion plates)\Z/i: 'fashion/\k<thing>'
     ? !ruby/regexp /^(walking dress|hoop skirt|gown|dinner dress|court dress|court train|ball
       gown|morning dress|evening dress|evening dres)$/i
     : dress:\1
+    !ruby/regexp /\Amy art\Z/i: 'artists on tumblr'
+    !ruby/regexp /\A(?<word>figure drawing|drawing)\Z/i: 'art/\k<word>'
   ns:
-    !ruby/regexp /\A(?<label>.*) (?<ns>art|mythology|architecture)\Z/i: '\k<ns>/\k<label> \k<ns>'
+    !ruby/regexp /\A(?!(?:%NAMESPACES%)/)(?<label>.*) (?<ns>art|history|fashion|costume|mythology|architecture)\Z/i: '\k<ns>/\k<label> \k<ns>'
     !ruby/regexp /\A(?<label>[^:/]+) (?<prefix>(?:%NAMESPACES%))\Z/i: '\k<prefix>/\k<prefix>:\k<label>' # |
   # TODO
   # inject: # a function of transform?
@@ -88,28 +103,33 @@ tag_rules:
     !ruby/regexp /\A(.*) (figurines?|figures?)\Z/i: 'figurines/figurine:\1'
     !ruby/regexp /\A([a-z]+) ?(hair)\Z/i: '\2/\2:\1'
     !ruby/regexp /\A(temple|palace|doric|ionic|corinthian|frieze|necropolis|monument|garden|catacombs)\Z/i: 'architecture/\1'
-    !ruby/regexp /\Adrawing\Z/i: 'art/art:drawing'
     !ruby/regexp /\A.*\b(?<word>slippers|boots|shoes|heels|flats)\Z/i: 'fashion/shoes/shoes:\k<word>'
     !ruby/regexp /\A(?<word>.+) (?<label>necklace)\Z/i: 'fashion/\k<label>/\k<label>:\k<word>'
     # TODO: revisit how dress is handled (inconsistent with other fashion:)
     !ruby/regexp /\Adress:(?<word>.+)|(?<word>.*\b(?:skirt|tights|dress))\Z/i: 'fashion/dress/\k<word>'
-    !ruby/regexp /\A(wiw|wiwt|wiwtd|what i wore today|what i wore|what i wear|ootd|outfit of the day)\Z/i: 'fashion/outfit of the day'
+    !ruby/regexp /\A(ootd|outfit of the day)\Z/i: 'fashion/outfit of the day'
+    !ruby/regexp /\A(wiw|wiwt|wiwtd|what i wore today|what i wore|what i wear?)\Z/i: 'fashion/what i wore'
     !ruby/regexp /\A(whatthelibrarianwore|librarian style)\Z/i: 'fashion/outfit of the day/librarian style'
     !ruby/regexp /\A(wiwtw|work outfit)\Z/i: 'fashion/outfit of the day/work outfit'
-    !ruby/regexp /\A(?i)(artist|photographer)s?.?[oi]n.?tumblr\Z/i: '\1s on tumblr'
+    !ruby/regexp /\A(?i)(artist|illustrator|comicker|comic artist|photographer)s?.?[oi]n.?tumblr\Z/i: '\1s on tumblr'
       #    !ruby/regexp /\A(.*ubaid.*|kurgan|inca|na[zs]ca|olmec|anatolian?|pre-columbian|neo-assyrian?|Mayan|Chup.cuaro|Etruscan|Cucuteni-Trypillian|Ixtlán|Izapa|Vikings?|aztec|nubian|babylon(?:ian)?|assyrian?|Kushite|Sumerian?\Z/i: 'culture/\1'
       #    !ruby/regexp /\A(pyramid|mound|Venus of .+|figurine|ancient art\\Z|mound of venus|Catal H.*|gob.kli tepe|trilithon|.*stonehenge\\Z|Stone circles|Judeideh|petroglyphs|rock carvings|runestones?|menhir|.*lithic|.*liths?|tumuli|grave|cave paintings|Jomon period|.* age|.* stele)\Z/i: 'archaeology/\1'
-    !ruby/regexp /\bnsfw\b/i: nsfw
+    !ruby/regexp /\A.*\bnsfw\b.*\Z/i: nsfw
+    !ruby/regexp /\A.*\bsfw\b.*\Z/i: sfw
+    !ruby/regexp /\A.*\bpen\Z/i: pen
   select:
     namespaces: !ruby/regexp /\A(%NAMESPACES%)\Z/i
-    general: !ruby/regexp /\A(underwater|purple|landscape|vintage|temple|dungeonsanddragons|cryptid|blazer|sci fi|forest|armor|medieval|anime|anthropology|cute|sports)\Z/i # // else NOMATCH
+    general: !ruby/regexp /\A(underwater|purple|landscape|vintage|temple|dungeonsanddragons|cryptid|blazer|sci fi|forest|armor|medieval|anime|anthropology|cute|sports|music|process|magic)\Z/i # // else NOMATCH
     archaeology: !ruby/regexp /\A(archaeology|history|prehistory|ancient|sumerian|cuneiform|artefact)\Z/i
-    art_techniques: !ruby/regexp /\A(doodle|brush and ink|gouache|painting|charcoal|photoshop|photography|watercolor|digital painting|ink|illustration|inktober)\Z/i
-    art_ref: !ruby/regexp /\A(photoref|figure|turnaround|anatomy|nude|nsfw)\Z/i
-    art: !ruby/regexp /\A(art|background|animation|design|portrait|(?:character|creature|costume|game|book|graphic) design|sketch|sketchbook|sculpture|prop|statue|writing|storyboard|wip|speedpaint|cartoon|color|original|oc)\Z/i
+    art_techniques: !ruby/regexp /\A(doodle|brush and ink|pen|gouache|painting|charcoal|photoshop|photography?|watercolor|digital painting|ink|illustration|inktober|profile)\Z/i
+    action: !ruby/regexp /\A(dancing|aloft)\Z/
+    art_ref: !ruby/regexp /\A(photoref|figure|turnaround|anatomy|nude|nsfw|T-Pose|male|female|pose)\Z/i
+    anatomy: !ruby/regexp /\A(body|eyes|arms|legs|head|facial expression|expression|teeth|posture|shoulder|hips)\Z/i
+    art: !ruby/regexp /\A(art|background|animation|design|portrait|(?:character|creature|game|book|graphic) design|sketch|sketchbook|sculpture|prop|statue|writing|storyboard|wip|speedpaint|cartoon|color|original|oc|black & white|gesture)\Z/i
     art_history: !ruby/regexp /\A(art deco|art noveau|renaissance)\Z/i
-    comics: !ruby/regexp /\A(comic|webcomic|journal comic)\Z/i
-    clothes: !ruby/regexp /\A(sweater|glasses|shoes|slippers|fashion|romper)\Z/i
+    history: !ruby/regexp /\A(medieval)\Z/i
+    comics: !ruby/regexp /\A(comic|webcomic|journal comic|model sheet)\Z/i
+    clothes: !ruby/regexp /\A(sweater|glasses|shoes|slippers|shirt|romper|embroidery)\Z/i
     animals: !ruby/regexp /\A(animal of the week|animals?|bird|turtle|shark|fish)\Z/i
     science: !ruby/regexp /\A(science|biology|astronomy|geology|anthropology|architecture|paleontology|mineralogy)\Z/i
     environment: !ruby/regexp /\A(environment|rural|plant|flower|sunlight|moonlight|tree)\Z/i
@@ -134,6 +154,7 @@ test_input:
   general:
     - lamasu
     - something we don't care about
+    - black woman
     - Greek Mythology
     - mythology:roman
     - mythology/mythology:norse
@@ -227,6 +248,9 @@ test_input:
     - 'wildlife photography' #53  # T
 
   art:
+    - 'art/fan art'
+    - 'art/roman art'
+    - 'eyes/eyes:up'
     - 'roman art'
     - 'greek art'
     - 'ancient art'
@@ -235,6 +259,8 @@ test_input:
     - 'not my art'
     - 'concept art'
     - 'game art'
+    - 'figure drawing'
+    - 'drawing'
     - 'egyptian art'
     - 'background art'
     - 'character art'
@@ -318,6 +344,16 @@ test_input:
     - 'Neolithic Art'
     - 'Paleolithic Art'
   fashion:
+    - evening coat
+    - coat
+    - coat:evening
+    - 'fashion/coat'
+    - clothing/evening coat
+    - haute couture
+    - menswear
+    - fashion:menswear
+    - fashion/fashion:menswear
+    - hoop skirt
     - historical fashion
     - Victorian fashion
     - librarian fashion
