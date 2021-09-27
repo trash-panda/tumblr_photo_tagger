@@ -33,7 +33,7 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "tumblr_client", "~> 0.8"
   spec.add_dependency "multi_exiftool", "~> 0.16.0"
-  spec.add_dependency "nokogiri", ">= 1.10.8", "< 1.12.0"
+  spec.add_dependency "nokogiri", ">= 1.10.8", "< 1.13.0"
   spec.add_dependency "oauth", "~> 0.5.6"
   spec.add_dependency "logging", "~> 2.2"
   spec.add_development_dependency "bundler", ">= 2.2.10", "< 3.0"
