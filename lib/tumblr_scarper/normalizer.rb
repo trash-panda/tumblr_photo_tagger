@@ -348,7 +348,26 @@ module TumblrScarper
           photos[url] = photo_data(photo,post,photo_src_field)
         elsif post['type'] == 'text'
 
-          imgs = TumblrScarper::ContentHelpers.imgs(post['body'])
+          body = post['body']
+          imgs = TumblrScarper::ContentHelpers.imgs(body)
+
+          # Some text posts don't have an html 'body' with imgs, but keep them
+          # in their ['trail'] key
+          #
+          #   https://sweet-metazoa.tumblr.com/post/129649791712/latimeria-chalumna"
+          #
+          if imgs.empty?
+            ###if post['trail'].to_a.size == 1
+            ###  body = post.dig('trail',0,'content')
+            ###  imgs = TumblrScarper::ContentHelpers.imgs(body)
+            ###elsif post['trail'].to_a.size > 1
+            ###  @log.todo( "post has no imgs in body, and ['trail'] size >= 1!.  What should we do here?")
+            ###  require 'pry'; binding.pry
+              imgs = post['trail'].inject([]){ |m,x| m + TumblrScarper::ContentHelpers.imgs(x.dig('content')) }
+            ###end
+          end
+
+
           embedded_photos = imgs.map do |x|
             {
               'caption' => '',
@@ -360,7 +379,7 @@ module TumblrScarper
             url =  photo['original_size']['url']
             data =  photo_data(photo,post,photo_src_field)
             data[:local_filename] += "-" +  (idx+1).to_s.rjust(2,'0')
-            caption  = TumblrScarper::ContentHelpers.post_html_caption_to_markdown(post['body'])
+            caption  = TumblrScarper::ContentHelpers.post_html_caption_to_markdown(body)
             unless caption.to_s.strip.empty?
               data[:caption] = caption
             end
