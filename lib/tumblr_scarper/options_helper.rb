@@ -82,6 +82,11 @@ module TumblrScarper
     def blog_data_from_arg(arg) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/AbcSize, Metrics/PerceivedComplexity
       data = {}
       case arg
+      when %r{^(https?://)?www\.tumblr\.[a-z]+}
+        uri_parts = arg.sub(%r{^https?://}, '').split('/')
+        data[:blog] = uri_parts[1]
+        data[:id] = uri_parts[2] if uri_parts[2] =~ /\A\d+\Z/
+        data[:tag] = uri_parts[3] if uri_parts[2] == 'tagged'
       when %r{^(https?://)?[a-z0-9_-]+\.tumblr.[a-z]+}
         uri_parts = arg.sub(%r{^https?://}, '').split('/')
         uri_parts.delete_at(1) if uri_parts[1] == 'archive'
@@ -112,10 +117,10 @@ module TumblrScarper
 
       if options.retag
         options[:targets] = args.select do |path|
-          unless File.directory?(path)
-            msg = "No directory at #{path}"
+          unless File.exists?(path)
+            msg = "No file or directory at #{path}"
             @log.error(msg)
-            fail Errno::ENOENT, msg
+            #fail Errno::ENOENT, msg
           end
           path
         end
