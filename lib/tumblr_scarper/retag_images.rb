@@ -3,12 +3,11 @@ require 'tumblr_scarper/tag_normalizer'
 require 'tumblr_scarper/content_helpers'
 require 'yaml'
 require 'multi_exiftool'
+require 'fileutils'
 
 module TumblrScarper
   class RetagImages
-    include  FileUtils::Verbose
-
-    attr_reader :tag_rules
+    include FileUtils
 
     KEYWORD_TAGS_TO_REMOVE = [
       'XMP-mediapro:CatalogSets',
@@ -106,13 +105,19 @@ module TumblrScarper
     end
 
     def retag_paths(paths)
-      paths.each{|path| retag_path(path) }
+      paths.each do |path|
+        if File.directory?(path)
+          retag_directory(path)
+        else
+          retag_file(path)
+        end
+      end
     end
 
     def ensure_tags_in_description(tags, caption)
       taglined_caption = TumblrScarper::ContentHelpers.taglined_caption(
         tags: tags,
-        caption: caption
+        caption: caption.to_s
       )
     end
 
@@ -128,130 +133,136 @@ module TumblrScarper
       keywords
     end
 
-    def retag_path(path)
-        require 'fileutils'
-        require 'date'
-        spn = 0
-        paths = File.join(path,'*')
-        Dir[paths].each do |sub_path|
-          sub_paths = Dir[File.join(sub_path,'*')]
-          spn += 1
-          next if sub_path =~ %r[/(airfortress)\Z]
-          @log.warn("== == (#{spn}/#{paths.size}) #{sub_path} (#{sub_paths.size}) == ==")
-          reader = exiftool_reader_for(sub_path)
-          results = reader.read
-          #puts "ARGS:", reader.exiftool_args
-          unless reader.errors.reject{|x| x.empty? || x =~ /image files read\Z/ }.empty?
-            @log.error ("ERRORS READING FILE METADATA: #{reader.errors.to_yaml}")
-            require 'pry'; binding.pry
-          end
+    def exiftool_read_path(path)
+      reader = exiftool_reader_for(path)
+      results = reader.read
+      #puts "ARGS:", reader.exiftool_args
+      unless reader.errors.reject{|x| x.empty? || x =~ /image files read\Z/ }.empty?
+        @log.error ("ERRORS READING FILE METADATA: #{reader.errors.to_yaml}")
+        require 'pry'; binding.pry
+      end
+      results
+    end
 
-          results.each do |img|
-            next unless img['sourcefile'] =~ /\.(jpg|jpeg|png|gif)\Z/i
-            mwg_keywords = sanitize_keywords (img['MWG']||{})['keywords']
-            tumblr_tags = sanitize_keywords (img['xmptumblr']||{})['tumblrtags']
-            caption = (img['MWG']||{})['description']
-            caption = caption.to_s if caption
-            post = {} # caption, tags
-
-            unless mwg_keywords || tumblr_tags
-              @log.verbose("-- No MWG or Tumblr tags: #{img['sourcefile']}; skipping")
-              next
-            end
-            @log.info( "\n====== img: #{img['sourcefile']}" )
-
-
-            if tumblr_tags #mwg_keywords && tumblr_tags
-              @log.debug( "case: MWG keyoard && TumblrTags: #{img['sourcefile']}" )
-              desc_with_tags = ensure_tags_in_description(tumblr_tags, caption)
-              puts desc_with_tags
-
-              if caption.gsub(/\r\n/,"\n") == desc_with_tags
-                CAPTION_TAGS_TO_REMOVE.any? do |tag|
-                  tag_ns = tag.split(':').first.downcase.sub('-','')
-                  tag_name = tag.split(':').last.downcase.sub('-','')
-                  if img[tag_ns] && img[tag_ns][tag_name]
-                    @log.warn "Found digikam caption poop '#{tag}'; forcing caption update"
-                    post[:caption] = desc_with_tags
-                  end
-                end
-              else
-                post[:caption] = desc_with_tags
-                unless desc_with_tags.gsub(/[\r\n]+---[\r\n]+Tags:.*\Z/,'') == caption.gsub(/\r\n|\r/,"\n").rstrip
-                  @log.error("UNEXPECTED: desc_with_tags came out differently than caption; find out why!")
-                  require 'pry'; binding.pry
-                end
-              end
-
-              new_mwg_keywords = @tag_normalizer.normalize(tumblr_tags)
-            # FIXME remove
-            # FIXME remove
-            # FIXME remove
-            # FIXME remove
-            # FIXME remove
-            # FIXME remove
-            # FIXME remove
-            # FIXME remove
-            # FIXME remove
-            # FIXME remove
-            # FIXME remove
-            # FIXME remove
-            # FIXME remove
-            # FIXME remove
-            # FIXME remove
-                bad_patt = /(costume|fashion|history):/
-
-              # Try to preserve valid keywords added by external tools
-              if mwg_keywords
-                processed_mwg_keywords = @tag_normalizer.normalize(mwg_keywords)
-                processed_mwg_keywords.reject!{|x| x =~ bad_patt }
-                missing_mwg = processed_mwg_keywords - new_mwg_keywords
-                unless missing_mwg.empty?
-                  @log.error "#{img['sourcefile']}: New tags would remove valid MWG tags: #{missing_mwg.to_yaml}\n"
-                  missing_mwg.map!{|x| x.sub(%r[\Ayear/(?<year>\d+) BCE\Z]i, 'year/\k<year> BCE')}
-                  missing_mwg.map!{|x| x.sub(%r[\Ayear/(?<year>\d+) CE\Z]i, 'year/\k<year> CE')}
-                  new_mwg_keywords += missing_mwg
-                  new_mwg_keywords.uniq!
-                  @log.recovery "Adding valid MWG tags back: #{missing_mwg.to_yaml}\n"
-
-                  remove_digikam_poop = KEYWORD_TAGS_TO_REMOVE.any? do |tag|
-                    tag_ns = tag.split(':').first.downcase.sub('-','')
-                    tag_name = tag.split(':').last.downcase.sub('-','')
-                    if img[tag_ns] && img[tag_ns][tag_name]
-                      @log.warn "Found digikam keywords poop '#{tag}'; forcing keywords update"
-                      post[:keywords] = new_mwg_keywords
-                    end
-                  end
-                end
-              end
-              if new_mwg_keywords.any?{|x| x =~ bad_patt }
-                @log.fatal "FORCING KEYWORD REMOVAL"
-                post[:keywords] = new_mwg_keywords.reject{ |x| x=~ bad_patt }
-              end
-
-              unless new_mwg_keywords.sort == (mwg_keywords||[]).sort
-                post[:keywords] = new_mwg_keywords
-              else
-                @log.happy("MWG Tags unchanged: #{new_mwg_keywords.join(', ')}")
-              end
-
-            else
-              mwgk = mwg_keywords ? 'y' : 'n'
-              tmbk = tumblr_tags ? 'y' : 'n'
-              @log.todo "NOT YET IMPLEMENTED: [MWG keywords: #{mwgk} | Tumblr keywords: #{tmbk}] - Case not handled yet"
-              ###require 'pry'; binding.pry
-            end
-
-            # if changed, write metadata back io image
-            if post.empty?
-              @log.happy("Tags & caption unchanged; no need to change file!")
-            else
-              @log.info "METADATA CHANGED: write to file: #{post.to_yaml}"
-              write_metadata_to_file( img['sourcefile'], post, img['system']["filemodifydate"])
-            end
-          end
+    def retag_directory(path)
+      spn = 0
+      paths = File.join(path,'*')
+      Dir[paths].each do |sub_path|
+        sub_paths = Dir[File.join(sub_path,'*')]
+        spn += 1
+        @log.warn("== == (#{spn}/#{paths.size}) #{sub_path} (#{sub_paths.size}) == ==")
+        exiftool_read_path(sub_path).each do |img|
+          retag_img(img)
+          next unless img['sourcefile'] =~ /\.(jpg|jpeg|png|gif)\Z/i
+        end
       end
     end
+
+    def retag_file(file)
+      retag_img( exiftool_read_path(file).first )
+    end
+
+    def retag_img(img)
+      mwg_keywords = sanitize_keywords (img['MWG']||{})['keywords']
+      tumblr_tags = sanitize_keywords (img['xmptumblr']||{})['tumblrtags']
+      caption = (img['MWG']||{})['description']
+      caption = caption.to_s # if caption # FIXME this looks like it should always be to_s
+      post = {} # caption, tags
+
+      unless mwg_keywords || tumblr_tags
+        @log.verbose("-- No MWG or Tumblr tags: #{img['sourcefile']}; skipping")
+        return
+      end
+      @log.info( "\n====== img: #{img['sourcefile']}" )
+
+
+      if tumblr_tags #mwg_keywords && tumblr_tags
+        @log.debug( "case: MWG keyoard && TumblrTags: #{img['sourcefile']}" )
+        desc_with_tags = ensure_tags_in_description(tumblr_tags, caption)
+        puts desc_with_tags
+
+        if caption.gsub(/\r\n/,"\n") == desc_with_tags
+          CAPTION_TAGS_TO_REMOVE.any? do |tag|
+            tag_ns = tag.split(':').first.downcase.sub('-','')
+            tag_name = tag.split(':').last.downcase.sub('-','')
+            if img[tag_ns] && img[tag_ns][tag_name]
+              @log.warn "Found digikam caption poop '#{tag}'; forcing caption update"
+              post[:caption] = desc_with_tags
+            end
+          end
+        else
+          post[:caption] = desc_with_tags
+          unless caption.empty?
+            unless desc_with_tags.gsub(/[\r\n]+---[\r\n]+Tags:.*\Z/,'') == caption.gsub(/\r\n|\r/,"\n").rstrip
+              @log.error("UNEXPECTED: desc_with_tags came out differently than caption; find out why!")
+              require 'pry'; binding.pry
+            end
+          end
+        end
+
+        new_mwg_keywords = @tag_normalizer.normalize(tumblr_tags)
+
+      # FIXME hack
+      # FIXME hack
+      # FIXME hack
+      # FIXME hack
+      # FIXME hack
+      # FIXME hack
+      # FIXME hack
+      # FIXME hack
+        bad_patt = /(costume|fashion|history):/
+
+        # Try to preserve valid keywords added by external tools
+        if mwg_keywords
+          processed_mwg_keywords = @tag_normalizer.normalize(mwg_keywords)
+          processed_mwg_keywords.reject!{|x| x =~ bad_patt }
+          missing_mwg = processed_mwg_keywords - new_mwg_keywords
+
+          unless missing_mwg.empty?
+            @log.error "#{img['sourcefile']}: New tags would remove valid MWG tags: #{missing_mwg.to_yaml}\n"
+            missing_mwg.map!{|x| x.sub(%r[\Ayear/(?<year>\d+) BCE\Z]i, 'year/\k<year> BCE')}
+            missing_mwg.map!{|x| x.sub(%r[\Ayear/(?<year>\d+) CE\Z]i, 'year/\k<year> CE')}
+            new_mwg_keywords += missing_mwg
+            new_mwg_keywords.uniq!
+            @log.recovery "Adding valid MWG tags back: #{missing_mwg.to_yaml}\n"
+
+            remove_digikam_poop = KEYWORD_TAGS_TO_REMOVE.any? do |tag|
+              tag_ns = tag.split(':').first.downcase.sub('-','')
+              tag_name = tag.split(':').last.downcase.sub('-','')
+              if img[tag_ns] && img[tag_ns][tag_name]
+                @log.warn "Found digikam keywords poop '#{tag}'; forcing keywords update"
+                post[:keywords] = new_mwg_keywords
+              end
+            end
+          end
+        end
+        if new_mwg_keywords.any?{|x| x =~ bad_patt }
+          @log.fatal "FORCING KEYWORD REMOVAL"
+          post[:keywords] = new_mwg_keywords.reject{ |x| x=~ bad_patt }
+        end
+
+        unless new_mwg_keywords.sort == (mwg_keywords||[]).sort
+          post[:keywords] = new_mwg_keywords
+        else
+          @log.happy("MWG Tags unchanged: #{new_mwg_keywords.join(', ')}")
+        end
+
+      else
+        mwgk = mwg_keywords ? 'y' : 'n'
+        tmbk = tumblr_tags ? 'y' : 'n'
+        @log.todo "NOT YET IMPLEMENTED: [MWG keywords: #{mwgk} | Tumblr keywords: #{tmbk}] - Case not handled yet"
+        ###require 'pry'; binding.pry
+      end
+
+      # if changed, write metadata back io image
+      if post.empty?
+        @log.happy("Tags & caption unchanged; no need to change file!")
+      else
+        @log.info "METADATA CHANGED: write to file: #{post.to_yaml}"
+        write_metadata_to_file( img['sourcefile'], post, img['system']["filemodifydate"])
+      end
+    end
+
   end
 end
 
