@@ -15,7 +15,7 @@ module TumblrScarper
       tagline = tags.map{|x| x.sub(/^/,'#')}.join(', ')
       tagline = "Tags: #{tagline}"
       tagline = "\n\n---\n#{tagline}" unless caption.empty?
-      [caption.to_s.rstrip,tagline].join
+      [caption.to_s.rstrip,tagline].join.strip
     end
 
     def self.to_exiftool_newlines(str)
