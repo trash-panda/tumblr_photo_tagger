@@ -77,7 +77,7 @@ module TumblrScarper
       @options.pipeline.keys.each { |k| @options.pipeline[k] = false } if @options[:retag]
 
       tag_rules_file = @options.tag_rules_file ||  @options.default_tag_rules_file
-      @options[:tag_rules] = YAML.load_file(tag_rules_file)
+      @options[:tag_rules] = YAML.load_file(tag_rules_file, permitted_classes: [Regexp])
       @log.error("tag_rules are EMPTY (loaded from '#{tag_rules_file}')") if @options[:tag_rules].to_h.empty?
 
       @options = set_up_target_options(@options, args)
