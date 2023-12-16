@@ -109,7 +109,7 @@ module TumblrScarper
 
       if post[:source_url]
         writer_values['xmp-dc:relation'] = [post[:source_url]] + writer_values['xmp-dc:relation']
-        writer_values['xmp-mwg-coll:Collections'] << %Q({CollectionName=Tumblr Source Post,CollectionURI=#{post[:source_url]}})
+        writer_values['xmp-mwg-coll:Collections'] << %Q({CollectionName=Tumblr Source Post,CollectionURI=#{post[:source_url].gsub(',', '%2C')}})
       end
 
       if post[:link_url]
@@ -154,6 +154,10 @@ module TumblrScarper
         # NOTE: write.filenames will always be a single file, so the "other_files" shouldn't be needed
         other_files = writer.filenames - [broken_file]
         writer.filenames = [new_file] + other_files
+        result = writer.write
+      elsif writer.errors.any?{|x| x =~ /\AError: File not found.*\.png\Z/ }
+        writer.filenames
+        writer.filenames.map!{|x| x.sub(/\.png$/,'--png.jpg')}
         result = writer.write
       end
       result
