@@ -81,6 +81,7 @@ module TumblrScarper
     # Returns :blog frm arg, which can be a blog name or tumblr post uri
     def blog_data_from_arg(arg) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/AbcSize, Metrics/PerceivedComplexity
       data = {}
+      arg = arg.gsub(/\?.*\Z/,'') # remove nuisance args from URL (like ?source=share)
       case arg
       when %r{^(https?://)?www\.tumblr\.[a-z]+}
         uri_parts = arg.sub(%r{^https?://}, '').split('/')
@@ -116,11 +117,20 @@ module TumblrScarper
       options = options.dup
 
       if options.retag
-        options[:targets] = args.select do |path|
+        options[:targets] = args.map do |path|
+          path = path.gsub(/\?.*\Z/,'')
+          if path =~ /\Ahttps?/
+             data = blog_data_from_arg(path)
+             @log.error("IF you are here, you are probably trying to retag a URL.  What is the best way to find if the file is downloaded?  If we only derive from the url strings, it might be wrong.  If we look it up from the cache, it requires the cache to be there.  Time to think and decide; I punted because it wasn't that important and it was almost midnight.")
+            require 'pry'; binding.pry
+
+          end
+        end.map do |path|
           unless File.exists?(path)
             msg = "No file or directory at #{path}"
             @log.error(msg)
             #fail Errno::ENOENT, msg
+            next nil
           end
           path
         end
