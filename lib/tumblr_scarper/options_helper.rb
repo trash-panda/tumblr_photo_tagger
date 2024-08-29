@@ -120,13 +120,14 @@ module TumblrScarper
         options[:targets] = args.map do |path|
           path = path.gsub(/\?.*\Z/,'')
           if path =~ /\Ahttps?/
-             data = blog_data_from_arg(path)
-             @log.error("IF you are here, you are probably trying to retag a URL.  What is the best way to find if the file is downloaded?  If we only derive from the url strings, it might be wrong.  If we look it up from the cache, it requires the cache to be there.  Time to think and decide; I punted because it wasn't that important and it was almost midnight.")
+            data = blog_data_from_arg(path)
+            @log.error("IF you are here, you are probably trying to locate and retag a local image file from a URL argument.  What is the best way to find if the file is downloaded?  If we only derive from the url strings, it might be wrong.  If we look it up from the cache, it requires the cache to be there.  Time to think and decide; I punted because it wasn't that important and it was almost midnight.")
             require 'pry'; binding.pry
-
           end
+          path
         end.map do |path|
-          unless File.exists?(path)
+          require 'pry'; binding.pry unless path
+          unless File.exist?(path)
             msg = "No file or directory at #{path}"
             @log.error(msg)
             #fail Errno::ENOENT, msg

@@ -30,13 +30,21 @@ module TumblrScarper
       # ----------------------------------------
       file_path_renamedjpg = file_path.sub(/\.(png|gif)$/, "--\\1.jpg")
 
-      unless File.exists?(file_path) || File.exist?(file_path_renamedjpg)
+      unless File.exist?(file_path) || File.exist?(file_path_renamedjpg)
         downloaded_file = download_url_to_tmpfile(url)
+        unless File.exist?(downloaded_file)
+          @log.todo "Somehow the downloaded file doesn't exist.  Investigate why:"
+          require 'pry'; binding.pry
+          return false
+        end
+
+        require 'pry'; binding.pry if (downloaded_file.path =~ /dutifullyfriedharmony-berührungspunkte/)
+        require 'pry'; binding.pry if (file_path =~ /dutifullyfriedharmony-berührungspunkte/)
         cp downloaded_file, file_path
         @log.success "Downloaded '#{url}' to '#{file_path}'"
         true
       else
-        if File.exists?(file_path)
+        if File.exist?(file_path)
           @log.happy "SKIP: skipping download - File exists: '#{file_path}'"
         else
           @log.happy "SKIP: skipping download - File exists: '#{file_path_renamedjpg}'"

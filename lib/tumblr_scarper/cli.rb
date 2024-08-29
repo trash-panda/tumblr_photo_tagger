@@ -28,7 +28,13 @@ module TumblrScarper
 
     def parse_args(_argv) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
       args = OptionParser.new do |opts|
-        opts.banner = "Usage:\n\n#{opts.summary_indent}tumblr_scarper [options] BLOG|URI [...]"
+        opts.banner = "Usage:\n"
+        opts.banner += "#{opts.summary_indent}Scarp API, DL, tag files:\n"
+        opts.banner += "#{opts.summary_indent*2}tumblr_scarper -123 [options] BLOG|URI [...]\n\n"
+        opts.banner += "#{opts.summary_indent}Retag scarped files using cached API data:\n"
+        opts.banner += "#{opts.summary_indent*2}tumblr_scarper -23 [options] BLOG|URI [...]\n\n"
+        opts.banner += "#{opts.summary_indent}Reformat local file metadata (using embedded MWG/Xmp-tumblr metadata):\n"
+        opts.banner += "#{opts.summary_indent*2}tumblr_scarper -R [options] FILE|DIR [...]\n"
 
         # tag
         # type
@@ -43,11 +49,11 @@ module TumblrScarper
           @log.info(Logging.show_configuration)
         end
 
-        opts.on('-d', '--directory PATH', "Directory to download blogs + images (default: '#{DEFAULT_DL_DIR}')") do |path|
+        opts.on('-d', '--directory PATH', "Directory to download blogs + images", "(default: '#{DEFAULT_DL_DIR}')") do |path|
           @options[:dl_root_dir] = path
         end
 
-        opts.on('-c', '--cache-directory PATH', 'Directory to cache blog metadata (default: same path as --directory)') do |path|
+        opts.on('-c', '--cache-directory PATH', 'Directory to cache blog metadata', '(default: same path as --directory)') do |path|
           @options[:cache_root_dir] = path
         end
 
@@ -55,7 +61,7 @@ module TumblrScarper
         opts.on('-1', '--[no-]scarp',     '[step 1] Scarp API data') { |v| @options[:pipeline][:scarp] = v }
         opts.on('-2', '--[no-]normalize', '[step 2] Normalize metadata') { |v| @options[:pipeline][:normalize] = v }
         opts.on('-3', '--[no-]download',  '[step 3] Download + tag images') { |v| @options[:pipeline][:download] = v }
-        opts.on('-R', '--retag',  '[no steps] Re-trag image file based on their tags') { |v| @options[:retag] = v }
+        opts.on('-R', '--retag',  '[no steps] Sanitize metadata of local image files (not URLs)', '           based on embedded MWG/Xmp-tumblr metadata') { |v| @options[:retag] = v }
 
         opts.separator "\nStep-specific options:\n"
         opts.on('-a', '--[no-]cache-raw-api-results', 'Cache raw API scarper results (used for testing)') do |v|
@@ -66,7 +72,7 @@ module TumblrScarper
           @options[:tag_on_skipped_dl] = v
         end
 
-        opts.on('-r', '--tag-rules-file FILE', "YAML file of tag rules (default: '#{@options.default_tag_rules_file}')") do |file|
+        opts.on('-r', '--tag-rules-file FILE', "YAML file of tag rules", "(default: '#{@options.default_tag_rules_file}')") do |file|
           @options[:tag_rules_file]
         end
       end.parse!
@@ -97,7 +103,7 @@ module TumblrScarper
         @log.info("Running pipeline...")
         @log.verbose("Targets to process: #{@options[:targets].join(', ')}")
 
-        @options[:pipeline][:scarp]     ? scarp     : @log.info('---- SKIPPED SCARP pipeline step (use -1)')
+        @options[:pipeline][:scarp]     ? scarp     : @log.info('---- SKIPPED SCARP API pipeline step (use -1)')
         @options[:pipeline][:normalize] ? normalize : @log.info('---- SKIPPED NORMALIZE pipeline step (use -2)')
         @options[:pipeline][:download]  ? download  : @log.info('---- SKIPPED DOWNLOAD pipeline step (user -3)')
       end
