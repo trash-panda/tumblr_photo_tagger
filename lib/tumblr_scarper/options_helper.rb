@@ -11,16 +11,17 @@ module TumblrScarper
 
     def default_logging
       # Default logger
-      Logging.init :debug, :verbose, :info, :happy, :warn, :success, :todo, :error, :recovery, :fatal
+      Logging.init :debug2, :debug, :verbose, :info, :happy, :warn, :success, :todo, :error, :recovery, :fatal
 
       # here we setup a color scheme called 'bright'
       Logging.color_scheme(
         'bright',
         lines: {
+          debug2: %i[dark blue on_black],
           debug: :blue,
           verbose: :blue,
           info: :cyan,
-          happy: :magenta,
+          happy: :bright_magenta,
           warn: :yellow,
           success: :green,
           todo: %i[black on_yellow],

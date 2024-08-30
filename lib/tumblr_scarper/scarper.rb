@@ -119,7 +119,7 @@ module TumblrScarper
           write_raw_api_result_cache(results, cache_dir, cache_name, cache_label) if @options[:cache_raw_api_results]
 
           posts = results[posts_key]
-          posts.map!{|x| x['___scarper::liked'] = true; x } if target[:likes]
+          posts.map!{|x| x['___scarper::liked'] = target[:likes]; x } if target[:likes]
           prev_results__links = results['_links']
 
           if prev_posts && posts == prev_posts
@@ -135,6 +135,7 @@ module TumblrScarper
           require 'pry'; binding.pry unless (posts && posts.size) # rubocop:disable Style/Semicolon, Lint/Debugger
           actual_post_count += posts.size
           File.open(cache_file, 'w') { |f| f.puts JSON.pretty_generate(posts) }
+          @log.debug2( JSON.pretty_generate(posts) )
           @log.success "SCARP: == cached #{cache_label} posts: #{posts.size} count: #{actual_post_count}"
 
           sleep delay
