@@ -212,9 +212,11 @@ module TumblrScarper
       post_title_excerpt_or_nil = [
         post['title'],
         post['excerpt'],
-      ].grep_v(NilClass).join("&xd;&xa;")
+      ].grep_v(NilClass).join("&#xd;&#xa;")
       post_title_excerpt_or_nil = nil if post_title_excerpt_or_nil.to_s.empty?
       photo_caption_or_nil = (photo['caption'].empty? ? nil : photo['caption'])
+      post_title = photo_caption_or_nil || post_title_excerpt_or_nil || nil
+      post_title.gsub(/\r\n|\r|\n/,"&#xd;&#xa;") if post_title
 
       data = {
         :tags     => sanitize_tags(post['tags']),
@@ -222,7 +224,7 @@ module TumblrScarper
 
         # Individual photoset photos can have titles (Tumblr calls them 'captions')
         # NOTE: In our photo metadata, this will replace the post[:title] (if there was one)
-        :title    =>  photo_caption_or_nil || post_title_excerpt_or_nil || nil,
+        :title    =>  post_title,
 
         # legacy post type   field
         # ---------   -------
