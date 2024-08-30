@@ -43,7 +43,7 @@ module TumblrScarper
 
         opts.separator "\nGlobal options:\n"
         opts.on('-v', '--[no-]verbose', 'Run verbosely (additive)') do |v|
-          incr = ((v ? -1 : 1) * 1)
+          incr = ((v ? -1 : 1) * 1) # lower is more verbose
           @options[:log].level += incr unless (@options[:log].level + incr).negative?
           @log.info("Log level + #{incr}")
           @log.info(Logging.show_configuration)
@@ -68,7 +68,7 @@ module TumblrScarper
           @options[:cache_raw_api_results] = v
         end
 
-        opts.on('-t', '--[no-]tag-on-skipped-dl', 'Skipping a download skips the tag, too') do |v|
+        opts.on('-t', '--[no-]tag-on-skipped-dl', 'Tag files that skip download', '(i.e., Force re-tag of files in-situ, without re-downloading them)') do |v|
           @options[:tag_on_skipped_dl] = v
         end
 
