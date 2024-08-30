@@ -15,7 +15,10 @@ RSpec.describe TumblrScarper::TagNormalizer do
 
   context 'basic rules' do
     let(:test_data) do
-      YAML.load_file(File.expand_path('../fixtures/files/tag_normalizer/tests01.yaml',__dir__))
+      YAML.load_file(File.expand_path(
+        '../fixtures/files/tag_normalizer/tests01.yaml',__dir__),
+        permitted_classes: [Regexp]
+      )
     end
 
 

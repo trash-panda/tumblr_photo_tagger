@@ -20,10 +20,10 @@ namespaces: demographic|complexion|action|animals|archaeology|architecture|arms|
 
 
 reject:
-- !ruby/regexp /\A.*\b(you(r|'?re|'?d|'?ve|ll)|is|it's|its|his|her|their|so+|too|we('d|'ve|'re)?|was|to|had|i('m|'d|'ve)?|am|have|not|im|sorry|a|whatever|oops|has|in|ugh|yeah|sry|if|uh|pls|but|got|fuck|because|when|why|though|thanks?|new year|me+|[oa]h+)\b.*/i
+- !ruby/regexp /\A.*\b(you(r|'?re|'?d|'?ve|ll)|is|it's|its|his|her|their|so+|too|we('d|'ve|'re)?|was|to|had|i('m|'d|'ve)?|am|have|not|im|sorry|a|whatever|oops|has|in|ugh|yeah|sry|if|uh|pls|but|got|fuck|because|when|my|why|though|thanks?|new year|me+|[oa]h+)\b.*/i
 - !ruby/regexp /\?|\!|\(|\)|\[|\]|\;|\.\.\.|\,/
 - dragon age
-- !ruby/regexp / years of | and fashion|thank god/
+- !ruby/regexp / years of | and fashion|thank god|\bmy\b/
 - !ruby/regexp /\A(buy|op|semi vent|frens|nostalgia|sw|birthday|food|stylized|ocean|adventure
   time fan|guest|spam|vent|romana) art\Z/i
 - !ruby/regexp /\A(the figures)\Z/i

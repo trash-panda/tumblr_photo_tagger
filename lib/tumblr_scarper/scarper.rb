@@ -37,6 +37,14 @@ module TumblrScarper
       raise('ERROR: connection to Tumblr API failed!')
     end
 
+    def fetch_tumblr_likes(blog, args)
+      @client.blog_likes(blog, args)
+    rescue Faraday::ConnectionFailed => e
+      @log.fatal e.message
+      @log.debug e.backtrace
+      raise('ERROR: connection to Tumblr API failed!')
+    end    
+
     def write_raw_api_result_cache(data, cache_dir, cache_name, cache_label)
       api_cache_file = File.join(cache_dir, "raw-api-results-offset-#{cache_name}.json")
       @log.info("SCARP: == cached **raw** API results #{cache_label}")
@@ -45,31 +53,41 @@ module TumblrScarper
 
 
     def scarp(target) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/AbcSize, Metrics/PerceivedComplexity
-      blog = target[:blog]
+      blog = target[:blog] || target[:likes]
       limit = @options[:batch_size]
       offset = @options[:offset] || 0
       delay = @options[:delay] || 2
-      args = target.dup.to_h.reject! { |k| k.to_s =~ /\A(blog)\Z/ }
+      args = target.dup.to_h.reject { |k| k.to_s =~ /\A(blog|likes)\Z/ }
+
       args.merge!(limit: limit, offset: offset) #, npf: true)
-
       cache_dir = @options[:target_cache_dirs][target]
-
       mkdir_p cache_dir
 
-      results = fetch_tumblr_posts(blog, args)
-      total_posts = results['total_posts'] || \
-        raise("ERROR: total posts is empty (\n  blog: '#{blog}'\n  results: #{results}\n  args: #{args}\n)")
+      if target[:likes]
+        results = fetch_tumblr_likes(target[:likes], args)
+        posts_key = 'liked_posts'
+        total_posts_key = 'liked_count'
+      else
+        results = fetch_tumblr_posts(blog, args)
+        posts_key = 'posts'
+        total_posts_key = 'total_posts'
+      end
+
+      total_posts = results[total_posts_key] || \
+        raise("ERROR: #{total_posts_key} is empty (\n  blog: '#{blog}'\n  results: #{results}\n  args: #{args}\n)")
       total_posts_w = total_posts.to_s.size
       actual_post_count = 0
-
       if @options[:cache_raw_api_results]
         cache_label = 'initial_fetch'
         api_cache_file = File.join(cache_dir, "raw-api-results-#{cache_label}.json")
         write_raw_api_result_cache(results, cache_dir, cache_label, cache_label) if @options[:cache_raw_api_results]
       end
 
+      prev_posts = nil
       posts = nil
       break_loop = false
+      retry_sleep_wait = 0
+      prev_results__links = nil
       loop do # rubocop:disable Metrics/BlockLength
         if (offset + limit) < total_posts
           max = offset + limit - 1
@@ -83,13 +101,38 @@ module TumblrScarper
         cache_label = "#{offset}..#{max}/#{total_posts} [#{target}]"
 
         unless File.file? cache_file
-          results = @client.posts(blog, args.merge(limit: limit, offset: offset)) if posts
+          offset_args = {limit: limit, offset: offset} # og offset pagination
+          if prev_results__links # v2 offset pagination
+            offset_args = prev_results__links.dig('next','query_params').map{|k,v| [k.to_sym, v] }.to_h
+          end
+          if target[:likes]
+            results = fetch_tumblr_likes(blog, args.merge(offset_args)) if posts
+          else 
+            @log.warn("Regression check for post offset_args:\n\n#{offset_args.to_yaml}\n\n(TODO: remove after verifying prev_result__links works here)")
+            require 'pry'; binding.pry
+            results = fetch_tumblr_posts(blog, args.merge(offset_args)) if posts
+          end
+
+          
+
+          #results = @client.posts(blog, args.merge(limit: limit, offset: offset)) if posts
           write_raw_api_result_cache(results, cache_dir, cache_name, cache_label) if @options[:cache_raw_api_results]
 
-          posts = results['posts']
+          posts = results[posts_key]
+          posts.map!{|x| x['___scarper::liked'] = true; x } if target[:likes]
+          prev_results__links = results['_links']
+
+          if prev_posts && posts == prev_posts
+            @log.error('API returned identical results from last query!')
+            require 'pry'; binding.pry
+            retry_sleep_wait += 10
+            @log.warn("sleeping #{delay + retry_sleep_wait} seconds to retry")
+            sleep delay + retry_sleep_wait
+            next
+          end
 
           # TODO Is the case for this pry still relevant?
-          require 'pry'; binding.pry unless posts.size # rubocop:disable Style/Semicolon, Lint/Debugger
+          require 'pry'; binding.pry unless (posts && posts.size) # rubocop:disable Style/Semicolon, Lint/Debugger
           actual_post_count += posts.size
           File.open(cache_file, 'w') { |f| f.puts JSON.pretty_generate(posts) }
           @log.success "SCARP: == cached #{cache_label} posts: #{posts.size} count: #{actual_post_count}"
@@ -101,7 +144,7 @@ module TumblrScarper
 
 
         break if break_loop
-
+        prev_posts = posts
         offset += limit
       end
       @log.info "SCARP: == retreived metadata for #{actual_post_count} posts"

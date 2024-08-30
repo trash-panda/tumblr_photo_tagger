@@ -44,6 +44,7 @@ module TumblrScarper
       end
 
       html.css('blockquote').each do |_p|
+        #require 'pry'; binding.pry
         text = _p.inner_text.split("\n").map{|x| "> #{x}" }.join("\n")
         _p.replace "#{text}\n"
       end
@@ -54,7 +55,7 @@ module TumblrScarper
         text.gsub!(/ *$/,'')
         text.gsub!(/\n+/,' ')   # Remove line breaks from the html
         text.gsub!("\r","\n")
-        _p.replace "#{text}\r"
+        _p.replace "#{text}\r\r"
       end
 
 

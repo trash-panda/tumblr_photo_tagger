@@ -13,6 +13,8 @@ module TumblrScarper
 
     # reject
     # correct
+    #  - tag
+    #  - tag + ns
     # transform
     # select
     # add
@@ -44,14 +46,13 @@ module TumblrScarper
       @tag_rules['reject'].any? {|rule| tag.downcase.match?(rule)}
     end
 
-    def correct(tag,stage: 'correct')
+    def correct(tag, stage: 'correct')
       @tag_rules[stage].inject(tag) do |tag,rule|
         rxp = rule[0]
         if rule[0].class == Regexp && rule.to_s.match?('%NAMESPACES')
           rxp = Regexp.new rule[0].to_s.gsub('%NAMESPACES%', @tag_rules['namespaces'])
         end
-
-        if rxp.match? tag
+        if rxp.match? Regexp.escape(tag)
           r_tag = tag.downcase.sub(rxp,rule[1])
           warn "  #{"(#{stage})".ljust(9)}   #{"'#{tag}'".ljust(27)} > #{"'#{r_tag}'".ljust(30)}"
           #warn "i              --> rule: '#{rule}'"
@@ -71,7 +72,7 @@ module TumblrScarper
         @log.debug "(transform) tag: '#{tag}', rule: '#{rule}'"
         r_tag = tag
 
-        if rxp.match? tag
+        if rxp.match? Regexp.escape(tag)
           r_tag = tag.sub(rxp,rule[1])
           warn "  (transform) #{"'#{tag}'".ljust(27)} > #{"'#{r_tag}'".ljust(30)}" unless r_tag == tag
           matched = true

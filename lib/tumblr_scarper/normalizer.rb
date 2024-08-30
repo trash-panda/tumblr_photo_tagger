@@ -197,6 +197,12 @@ module TumblrScarper
           require 'pry'; binding.pry
         end
       end
+      if post['___scarper::liked']
+        str = "#{post['blog_name'] || post.dig('blog','name') || 'UNKNOWN-BLOG-NAME' }---#{str}"
+        timestamp_prefix = Time.at(post['liked_timestamp']).strftime('%Y%m%d-%H%M%S') 
+        str = "#{timestamp_prefix}---#{str}"
+      end
+
       str += "--#{offset}" if offset
       str
     end
@@ -299,7 +305,7 @@ module TumblrScarper
               end
             end
 
-            # photoset_layout - an undocumented key from the lagacy API's photo posts
+            # photoset_layout - an undocumented key from the legacy API's photo posts
             #
             #   https://ortiies.tumblr.com/post/612870791583940608/past-6pm-cryptid-hunter-shift-is-over-and-this
             #

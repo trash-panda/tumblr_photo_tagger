@@ -171,6 +171,29 @@ module TumblrScarper
       result
     end
 
+    def workaround_looks_like_png_error(writer, result)
+      # WARNING: this will mean a subsequent dl will alway  dl the png again
+      # TODO: record errors (see @writer_errors)
+      if writer.errors.any? { |e| e =~ /Error: Not a valid ([A-Z]+) \(looks more like a PNG\) - (.*)/ }
+        ext         = Regexp.last_match(1).downcase
+        broken_file = Regexp.last_match(2)
+        new_file    = broken_file.sub(/\.#{ext}$/i, "--#{ext}.png")
+        mv broken_file, new_file
+        @log.recovery "    !!! RENAMED '#{broken_file}' to '#{new_file}'"
+
+        # NOTE: write.filenames will always be a single file, so the "other_files" shouldn't be needed
+        other_files = writer.filenames - [broken_file]
+        writer.filenames = [new_file] + other_files
+        result = writer.write
+      elsif writer.errors.any?{|x| x =~ /\AError: File not found.*\.jpe?g\Z/ }
+        writer.filenames
+        writer.filenames.map!{|x| x.sub(/\.(jpe?g|gif|webm)$/,'--\\1.jpg')}
+        result = writer.write
+      end
+      result
+    end
+
+
     def workaround_cant_read_exififd_data_error(writer, file_path, result)
       if writer.errors.any? { |e| e =~ /Can.{0,5}t read ExifIFD data/ }
         # Verify type of file, too
@@ -205,8 +228,9 @@ module TumblrScarper
         @log.error "TAG: Tagging failed: '#{writer.errors}'"
 
         result = workaround_png_looks_like_jpeg_error(writer, result)
+        result = workaround_looks_like_png_error(writer, result)
         result = workaround_cant_read_exififd_data_error(writer, file_path, result)
-
+        
         unless result
           @log.error "TAG: Tagging uncorrectably failed: '#{writer.errors}'\n\n\tfile: '#{file_path}'\n\tpost: '#{post[:url]}'\n\turl:  '#{url}'"
           if writer.errors.first =~ /^Warning: \[Minor\]/i # rubocop:disable Style/Semicolon, Lint/Debugger
