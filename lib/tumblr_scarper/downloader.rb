@@ -195,7 +195,7 @@ module TumblrScarper
 
 
     def workaround_cant_read_exififd_data_error(writer, file_path, result)
-      if writer.errors.any? { |e| e =~ /Can.{0,5}t read ExifIFD data/ }
+      if writer.errors.any? { |e| e =~ /Can.{0,5}t read ExifIFD data|XMP format error/  }
         # Verify type of file, too
         # For
         #   Bad ExifOffset SubDirectory start
