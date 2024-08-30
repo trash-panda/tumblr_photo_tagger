@@ -105,11 +105,10 @@ module TumblrScarper
           if prev_results__links # v2 offset pagination
             offset_args = prev_results__links.dig('next','query_params').map{|k,v| [k.to_sym, v] }.to_h
           end
+
           if target[:likes]
             results = fetch_tumblr_likes(blog, args.merge(offset_args)) if posts
           else 
-            @log.warn("Regression check for post offset_args:\n\n#{offset_args.to_yaml}\n\n(TODO: remove after verifying prev_result__links works here)")
-            require 'pry'; binding.pry
             results = fetch_tumblr_posts(blog, args.merge(offset_args)) if posts
           end
 
