@@ -31,7 +31,15 @@ module TumblrScarper
       file_path_renamedjpg = file_path.sub(/\.(png|gif)$/, "--\\1.jpg")
 
       unless File.exist?(file_path) || File.exist?(file_path_renamedjpg)
+        begin
         downloaded_file = download_url_to_tmpfile(url)
+        rescue Error => e
+          if e.message =~ /500 Internal Server Error/
+            @log.error  "download failed (#{url}): #{e.message}"
+            sleep 5
+            return false
+          end
+        end
         unless File.exist?(downloaded_file)
           @log.todo "Somehow the downloaded file doesn't exist.  Investigate why:"
           require 'pry'; binding.pry
@@ -230,7 +238,12 @@ module TumblrScarper
         result = workaround_png_looks_like_jpeg_error(writer, result)
         result = workaround_looks_like_png_error(writer, result)
         result = workaround_cant_read_exififd_data_error(writer, file_path, result)
-        
+
+        # FIXME: come up with workarounds for these errors:
+        #  - IPTC:Caption-Abstract exceeds length limit (truncated)
+        #    example: https://nasa.tumblr.com/post/699273649636687872/comin-in-hot-seven-things-to-know-about-our-new
+        #  - Duplicate XMP block created
+        #    example: https://nasa.tumblr.com/post/186024695704/planes-trains-and-barges-how-were-moving-our
         unless result
           @log.error "TAG: Tagging uncorrectably failed: '#{writer.errors}'\n\n\tfile: '#{file_path}'\n\tpost: '#{post[:url]}'\n\turl:  '#{url}'"
           if writer.errors.first =~ /^Warning: \[Minor\]/i # rubocop:disable Style/Semicolon, Lint/Debugger
@@ -323,7 +336,6 @@ module TumblrScarper
       downloaded_file
     rescue *DOWNLOAD_ERRORS => e
       raise if e.instance_of?(RuntimeError) && e.message !~ /redirection/
-
       raise Error, "download failed (#{url}): #{e.message}"
     end
   end
